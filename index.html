@@ -1,0 +1,2292 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CNN 0~9 숫자 인식 &amp; MNIST 비교 — 교육용 인터랙티브 랩</title>
+  <style>
+    /* ==========================================================================
+       [디자인 시스템] 검이불루 화이불치(儉而不陋 華而不侈)
+       - 외부 폰트/CDN 없이 시스템 산세리프 및 모노스페이스 폰트 활용
+       - 한지 톤 미색(#F7F5F0 / #FBF9F5), 스톤 테두리(#E5E1D8), 송록색(#2E5B4C),
+         황토색(#C9A65B), 적갈색(#B85D43) 절제된 배색
+       ========================================================================== */
+    :root {
+      --bg-page: #F7F5F0;
+      --bg-card: #FBF9F5;
+      --bg-subtle: #F1EDE4;
+      --bg-hover: #EAE4D7;
+      --border-stone: #E5E1D8;
+      --border-strong: #D6D1C4;
+      --text-main: #23221F;
+      --text-sub: #5E5A52;
+      --text-muted: #888277;
+      --accent-pine: #2E5B4C;       /* 송록색: 주요 활성, 양수 가중치, 정답 강조 */
+      --accent-pine-light: #E6EFEA;
+      --accent-ochre: #C9A65B;      /* 황토색: 풀링, 중간 단계, 수용 영역 */
+      --accent-ochre-light: #F7F1E1;
+      --accent-rust: #B85D43;       /* 적갈색: 음수 가중치, 억제, 오차 */
+      --accent-rust-light: #F6E9E5;
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans KR", "Malgun Gothic", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .tabular {
+      font-variant-numeric: tabular-nums;
+      font-family: var(--font-mono);
+    }
+
+    /* ==========================================================================
+       1. 상단 고정 제어 바 (Sticky Top Control Bar)
+       ========================================================================== */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background-color: rgba(251, 249, 245, 0.96);
+      backdrop-filter: blur(4px);
+      border-bottom: 1px solid var(--border-strong);
+      padding: 10px 20px;
+    }
+
+    .top-bar-inner {
+      max-width: 1480px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-mark {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background-color: var(--accent-pine);
+      border-radius: 2px;
+    }
+
+    .accuracy-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--accent-pine);
+      background-color: var(--accent-pine-light);
+      color: var(--accent-pine);
+      transition: all 0.2s ease;
+    }
+
+    .accuracy-badge.warn {
+      border-color: var(--accent-ochre);
+      background-color: var(--accent-ochre-light);
+      color: #7D6022;
+    }
+
+    .playback-controls {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .btn {
+      appearance: none;
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-strong);
+      border-radius: 5px;
+      padding: 6px 11px;
+      font-size: 12.5px;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+      user-select: none;
+    }
+
+    .btn:hover {
+      background-color: var(--bg-subtle);
+      border-color: #B8B1A2;
+    }
+
+    .btn:active {
+      background-color: var(--bg-hover);
+    }
+
+    .btn-primary {
+      background-color: var(--accent-pine);
+      border-color: var(--accent-pine);
+      color: #FFFFFF;
+    }
+
+    .btn-primary:hover {
+      background-color: #24483C;
+      border-color: #24483C;
+    }
+
+    .btn-active {
+      background-color: var(--accent-pine-light);
+      border-color: var(--accent-pine);
+      color: var(--accent-pine);
+      font-weight: 600;
+    }
+
+    .btn-ochre-active {
+      background-color: var(--accent-ochre-light);
+      border-color: var(--accent-ochre);
+      color: #7A5C1E;
+      font-weight: 600;
+    }
+
+    .speed-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border: 1px solid var(--border-stone);
+      border-radius: 5px;
+      background-color: var(--bg-subtle);
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    .speed-control input[type="range"] {
+      width: 76px;
+      accent-color: var(--accent-pine);
+      cursor: pointer;
+    }
+
+    .step-indicator {
+      padding: 4px 10px;
+      border-radius: 5px;
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-strong);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--accent-pine);
+    }
+
+    /* ==========================================================================
+       2. 메인 컨테이너 및 4단계 그리드 레이아웃
+       ========================================================================== */
+    .main-wrap {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 18px 20px 124px 20px; /* 하단 고정 수식 바 여백 확보 */
+    }
+
+    .pipeline-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    @media (min-width: 960px) {
+      .pipeline-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (min-width: 1360px) {
+      .pipeline-grid {
+        grid-template-columns: 1.02fr 1.12fr 0.88fr 1.28fr;
+      }
+    }
+
+    /* 단계 카드 조형: 1px 얇은 테두리, 과한 그림자 배제 */
+    .stage-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-stone);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .stage-card.is-current {
+      border: 1.5px solid var(--accent-pine);
+      background-color: #FCFBF8;
+    }
+
+    .stage-card.is-current::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background-color: var(--accent-pine);
+      border-radius: 7px 7px 0 0;
+    }
+
+    .stage-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-stone);
+    }
+
+    .stage-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background-color: var(--bg-subtle);
+      color: var(--text-sub);
+      border: 1px solid var(--border-strong);
+      margin-bottom: 4px;
+    }
+
+    .stage-card.is-current .stage-badge {
+      background-color: var(--accent-pine);
+      color: #FFFFFF;
+      border-color: var(--accent-pine);
+    }
+
+    .stage-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .stage-sub {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    .dim-tag {
+      font-size: 11.5px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background-color: var(--bg-subtle);
+      color: var(--text-sub);
+      border: 1px solid var(--border-stone);
+      white-space: nowrap;
+    }
+
+    /* ==========================================================================
+       3. 1단계: 입력 8×8 픽셀 그리드 및 숫자 프리셋
+       ========================================================================== */
+    .preset-digits {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 4px;
+    }
+
+    .digit-btn {
+      padding: 6px 0;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .digit-btn:hover {
+      background-color: var(--bg-subtle);
+    }
+
+    .digit-btn.active {
+      background-color: var(--accent-pine);
+      border-color: var(--accent-pine);
+      color: #FFFFFF;
+    }
+
+    .tool-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .tool-row .btn {
+      padding: 5px 8px;
+      font-size: 12px;
+      flex: 1 1 auto;
+    }
+
+    .grid-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pixel-grid-8x8 {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      width: 100%;
+      max-width: 264px;
+      aspect-ratio: 1 / 1;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      overflow: hidden;
+      background-color: #FFFFFF;
+      touch-action: none; /* 터치 드래그 시 스크롤 방지 */
+      user-select: none;
+    }
+
+    .px-cell {
+      border-right: 1px solid var(--border-stone);
+      border-bottom: 1px solid var(--border-stone);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      cursor: crosshair;
+      position: relative;
+      transition: background-color 0.08s;
+    }
+
+    .px-cell:nth-child(8n) { border-right: none; }
+    .px-cell:nth-child(n+57) { border-bottom: none; }
+
+    .px-cell.on {
+      background-color: var(--text-main);
+      color: #FBF9F5;
+    }
+
+    .px-cell.off {
+      background-color: #FFFFFF;
+      color: var(--text-muted);
+    }
+
+    /* 2단계 특징 맵 호버 시 1단계의 대응 3×3 수용 영역 하이라이트 */
+    .px-cell.receptive-highlight {
+      outline: 2px solid var(--accent-ochre);
+      outline-offset: -2px;
+      z-index: 2;
+    }
+
+    .px-cell.receptive-highlight.off {
+      background-color: var(--accent-ochre-light);
+    }
+
+    .px-cell.receptive-highlight.on {
+      background-color: #3E3A2F;
+    }
+
+    /* ==========================================================================
+       4. 2단계: 3×3 커널 및 6×6 특징 맵
+       ========================================================================== */
+    .kernel-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .kernel-presets .btn {
+      padding: 4px 8px;
+      font-size: 11.5px;
+    }
+
+    .conv-workspace {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .kernel-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px;
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-stone);
+      border-radius: 6px;
+    }
+
+    .kernel-grid-3x3 {
+      display: grid;
+      grid-template-columns: repeat(3, 44px);
+      gap: 4px;
+    }
+
+    .kernel-input {
+      width: 44px;
+      height: 32px;
+      text-align: center;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      background-color: #FFFFFF;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .kernel-input.pos {
+      border-color: var(--accent-pine);
+      color: var(--accent-pine);
+      background-color: var(--accent-pine-light);
+    }
+
+    .kernel-input.neg {
+      border-color: var(--accent-rust);
+      color: var(--accent-rust);
+      background-color: var(--accent-rust-light);
+    }
+
+    .relu-toggle-box {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .switch-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .switch-label input[type="checkbox"] {
+      accent-color: var(--accent-pine);
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    .fmap-grid-6x6 {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      width: 100%;
+      max-width: 252px;
+      aspect-ratio: 1 / 1;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      overflow: hidden;
+      background-color: #FFFFFF;
+      margin: 0 auto;
+    }
+
+    .fmap-cell {
+      border-right: 1px solid var(--border-stone);
+      border-bottom: 1px solid var(--border-stone);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.08s;
+    }
+
+    .fmap-cell:nth-child(6n) { border-right: none; }
+    .fmap-cell:nth-child(n+31) { border-bottom: none; }
+
+    .fmap-cell.selected-cell {
+      outline: 2px solid var(--accent-pine);
+      outline-offset: -2px;
+      z-index: 2;
+    }
+
+    .fmap-cell.pool-window-highlight {
+      outline: 2px solid var(--accent-ochre);
+      outline-offset: -2px;
+      z-index: 2;
+    }
+
+    .dot-inspector {
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-stone);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 11.5px;
+      color: var(--text-sub);
+      min-height: 58px;
+    }
+
+    .dot-inspector-title {
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 3px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .dot-formula {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      word-break: break-all;
+      color: var(--text-main);
+      line-height: 1.4;
+    }
+
+    /* ==========================================================================
+       5. 3단계: 풀링 3×3 (2×2 윈도우, Stride 2)
+       ========================================================================== */
+    .pool-mode-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .pool-grid-3x3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      width: 100%;
+      max-width: 210px;
+      aspect-ratio: 1 / 1;
+      border: 1.5px solid var(--accent-ochre);
+      border-radius: 6px;
+      overflow: hidden;
+      background-color: #FFFFFF;
+      margin: 6px auto;
+    }
+
+    .pool-cell {
+      border-right: 1px solid var(--border-stone);
+      border-bottom: 1px solid var(--border-stone);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 4px;
+      transition: background-color 0.12s;
+    }
+
+    .pool-cell:nth-child(3n) { border-right: none; }
+    .pool-cell:nth-child(n+7) { border-bottom: none; }
+
+    .pool-cell:hover, .pool-cell.active-pool {
+      outline: 2px solid var(--accent-ochre);
+      outline-offset: -2px;
+    }
+
+    .pool-idx {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .pool-val {
+      font-size: 14px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .pool-note {
+      font-size: 12px;
+      color: var(--text-sub);
+      background-color: var(--accent-ochre-light);
+      border: 1px solid #E5D4AD;
+      border-radius: 6px;
+      padding: 8px 10px;
+      line-height: 1.45;
+    }
+
+    /* ==========================================================================
+       6. 4단계: 직렬화(Flatten) & 완전연결 & 소프트맥스
+       ========================================================================== */
+    .prediction-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background-color: var(--accent-pine-light);
+      border: 1px solid var(--accent-pine);
+      border-radius: 6px;
+    }
+
+    .pred-label {
+      font-size: 12px;
+      color: var(--accent-pine);
+      font-weight: 600;
+    }
+
+    .pred-digit-big {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--accent-pine);
+      line-height: 1;
+      font-family: var(--font-mono);
+    }
+
+    .pred-prob-big {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent-pine);
+      font-family: var(--font-mono);
+    }
+
+    .fc-visual-wrap {
+      display: grid;
+      grid-template-columns: 118px 1fr;
+      gap: 6px;
+      align-items: center;
+      border: 1px solid var(--border-stone);
+      border-radius: 6px;
+      padding: 8px;
+      background-color: #FFFFFF;
+    }
+
+    .fc-svg {
+      width: 118px;
+      height: 290px;
+      display: block;
+    }
+
+    .prob-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .prob-row {
+      display: grid;
+      grid-template-columns: 22px 1fr 48px 46px;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background-color 0.12s, border-color 0.12s;
+    }
+
+    .prob-row:hover {
+      background-color: var(--bg-subtle);
+    }
+
+    .prob-row.selected-class {
+      background-color: var(--bg-subtle);
+      border-color: var(--border-strong);
+    }
+
+    .prob-row.top-class {
+      background-color: var(--accent-pine-light);
+      border-color: var(--accent-pine);
+      font-weight: 700;
+    }
+
+    .prob-digit {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .prob-bar-bg {
+      height: 10px;
+      background-color: var(--bg-subtle);
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid var(--border-stone);
+    }
+
+    .prob-bar-fill {
+      height: 100%;
+      background-color: #96A8A0;
+      transition: width 0.2s ease;
+    }
+
+    .prob-row.top-class .prob-bar-fill {
+      background-color: var(--accent-pine);
+    }
+
+    .prob-logit {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-sub);
+      text-align: right;
+    }
+
+    .prob-pct {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      text-align: right;
+      color: var(--text-main);
+    }
+
+    .legend-inline {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-sub);
+      padding: 0 2px;
+    }
+
+    /* ==========================================================================
+       7. [기능 2] 설명 및 MNIST 비교 보드 (접기/펼치기 + 탭)
+       ========================================================================== */
+    .edu-board {
+      margin-top: 20px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .edu-board-header {
+      padding: 12px 18px;
+      background-color: var(--bg-subtle);
+      border-bottom: 1px solid var(--border-stone);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .edu-tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .edu-board-body {
+      padding: 18px;
+    }
+
+    .edu-board-body.collapsed {
+      display: none;
+    }
+
+    .compare-cards {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    @media (min-width: 860px) {
+      .compare-cards {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .formula-card {
+      background-color: #FFFFFF;
+      border: 1px solid var(--border-stone);
+      border-radius: 6px;
+      padding: 14px;
+    }
+
+    .formula-card h4 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text-main);
+    }
+
+    .math-box {
+      background-color: var(--bg-subtle);
+      border-left: 3px solid var(--accent-pine);
+      padding: 8px 12px;
+      margin: 8px 0;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--text-main);
+      border-radius: 0 4px 4px 0;
+    }
+
+    .math-box.ochre {
+      border-left-color: var(--accent-ochre);
+    }
+
+    .pipeline-steps-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    @media (min-width: 960px) {
+      .pipeline-steps-list {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .pipeline-steps-list li {
+      background-color: #FFFFFF;
+      border: 1px solid var(--border-stone);
+      border-radius: 5px;
+      padding: 8px 12px;
+      font-size: 12.5px;
+    }
+
+    .step-num-pill {
+      display: inline-block;
+      background-color: var(--accent-pine);
+      color: #FFFFFF;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 3px;
+      margin-right: 6px;
+      font-family: var(--font-mono);
+    }
+
+    /* MNIST 비교 테이블 */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .mnist-table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: #FFFFFF;
+      border: 1px solid var(--border-strong);
+      font-size: 13px;
+    }
+
+    .mnist-table th, .mnist-table td {
+      border: 1px solid var(--border-stone);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .mnist-table th {
+      background-color: var(--bg-subtle);
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .mnist-table th.col-lab {
+      background-color: var(--accent-pine-light);
+      color: var(--accent-pine);
+    }
+
+    .mnist-table th.col-mnist {
+      background-color: var(--accent-ochre-light);
+      color: #7A5C1E;
+    }
+
+    /* ==========================================================================
+       8. 하단 고정 실시간 수식 바 (Sticky Bottom Formula Bar)
+       ========================================================================== */
+    .bottom-formula-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      background-color: rgba(251, 249, 245, 0.97);
+      backdrop-filter: blur(4px);
+      border-top: 1px solid var(--border-strong);
+      padding: 8px 20px;
+    }
+
+    .bottom-formula-inner {
+      max-width: 1480px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .formula-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .formula-tag {
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      background-color: var(--accent-pine);
+      color: #FFFFFF;
+      white-space: nowrap;
+    }
+
+    .formula-tag.ochre {
+      background-color: var(--accent-ochre);
+      color: #23221F;
+    }
+
+    .formula-expr {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-main);
+      overflow-x: auto;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+
+    .pos-txt { color: var(--accent-pine); font-weight: 600; }
+    .neg-txt { color: var(--accent-rust); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       상단 고정 제어 바: 타이틀, 프리셋 검증 배지, 시연 재생 컨트롤, 진행 단계
+       ======================================================================== -->
+  <header class="top-bar">
+    <div class="top-bar-inner">
+      <div class="brand-group">
+        <div class="brand-title">
+          <span class="brand-mark"></span>
+          <span>CNN 0~9 숫자 인식 &amp; MNIST 비교 랩</span>
+        </div>
+        <div id="accuracyBadge" class="accuracy-badge tabular" title="0~9 전체 프리셋을 실제 파이프라인에 통과시킨 검증 결과">
+          프리셋 정확도 10/10
+        </div>
+      </div>
+
+      <div class="playback-controls">
+        <button id="btnPlayPause" class="btn btn-primary" type="button" title="1단계부터 4단계까지 자동 순차 시연">▶ 재생</button>
+        <button id="btnPrevStep" class="btn" type="button" title="이전 단계로 이동">← 이전</button>
+        <button id="btnNextStep" class="btn" type="button" title="다음 단계로 이동">다음 →</button>
+        <button id="btnReset" class="btn" type="button" title="초기 설정 및 숫자 0으로 복원">초기화</button>
+
+        <label class="speed-control" title="자동 재생 전환 속도 조절">
+          <span>속도</span>
+          <input id="speedSlider" type="range" min="0.5" max="3.0" step="0.5" value="1.0" />
+          <span id="speedValue" class="tabular">1.0×</span>
+        </label>
+
+        <div id="stepIndicator" class="step-indicator tabular">1 / 4</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       메인 본문: 4단계 CNN 연산 파이프라인 카드 그리드
+       ======================================================================== -->
+  <main class="main-wrap">
+    <section class="pipeline-grid" aria-label="CNN 4단계 순전파 파이프라인">
+
+      <!-- [1단계] 입력 8×8 픽셀 -->
+      <article id="stageCard1" class="stage-card is-current">
+        <div class="stage-header">
+          <div>
+            <span class="stage-badge">STAGE 1 · 입력층</span>
+            <h2 class="stage-title">8×8 이진 픽셀 입력</h2>
+            <p class="stage-sub">숫자 프리셋 선택 또는 격자 드래그로 직접 그리기</p>
+          </div>
+          <span class="dim-tag tabular">8 × 8 = 64</span>
+        </div>
+
+        <!-- 0~9 숫자 프리셋 버튼 -->
+        <div>
+          <div style="font-size: 11.5px; color: var(--text-sub); margin-bottom: 5px; font-weight: 600;">숫자 프리셋 (0~9)</div>
+          <div id="digitPresetContainer" class="preset-digits"></div>
+        </div>
+
+        <!-- 그리기 / 지우개 / 전체 지우기 / 픽셀 수치 토글 -->
+        <div class="tool-row">
+          <button id="btnToolDraw" class="btn btn-active" type="button">✎ 직접 그리기</button>
+          <button id="btnToolErase" class="btn" type="button">⌫ 지우개</button>
+          <button id="btnClearGrid" class="btn" type="button">전체 지우기</button>
+          <button id="btnTogglePixelVal" class="btn" type="button">픽셀 수치: OFF</button>
+        </div>
+
+        <!-- 8×8 인터랙티브 픽셀 캔버스 -->
+        <div class="grid-wrap">
+          <div id="inputGrid8x8" class="pixel-grid-8x8" role="grid" aria-label="8×8 입력 픽셀 그리드"></div>
+          <div style="font-size: 11.5px; color: var(--text-muted); text-align: center;">
+            검정 칸 = 1 (활성), 흰 칸 = 0 (배경) · 마우스/터치 드래그 지원
+          </div>
+        </div>
+      </article>
+
+      <!-- [2단계] 3×3 커널 합성곱 & ReLU → 6×6 특징 맵 -->
+      <article id="stageCard2" class="stage-card">
+        <div class="stage-header">
+          <div>
+            <span class="stage-badge">STAGE 2 · 합성곱 &amp; ReLU</span>
+            <h2 class="stage-title">3×3 커널 필터 &amp; 특징 맵</h2>
+            <p class="stage-sub">Stride 1 내적 연산 후 비선형 활성화 max(0, x)</p>
+          </div>
+          <span class="dim-tag tabular">6 × 6 = 36</span>
+        </div>
+
+        <!-- 커널 프리셋 5종 -->
+        <div>
+          <div style="font-size: 11.5px; color: var(--text-sub); margin-bottom: 5px; font-weight: 600;">3×3 커널 프리셋 (5종)</div>
+          <div id="kernelPresetContainer" class="kernel-presets"></div>
+          <p id="kernelNote" style="font-size: 11px; color: var(--text-sub); line-height: 1.5; margin-top: 6px;">
+            ※ 9×10 분류 가중치는 기본 커널(<strong>윤곽선 강조</strong>)에 맞춰 설계되어, 커널을 다른 엣지 필터로 바꾸면 특징 맵이 달라져
+            정확도가 떨어집니다(수직·수평 엣지만으로는 세로획·가로획이 같은 숫자들을 구분할 수 없습니다).
+            실제 CNN은 필터와 분류기를 <strong>역전파로 함께 학습</strong>합니다 — 아래 비교표의 ‘학습 방식’ 행을 참고하세요.
+          </p>
+        </div>
+
+        <!-- 3×3 커널 직접 편집 + ReLU 토글 -->
+        <div class="conv-workspace">
+          <div class="kernel-box">
+            <div id="kernelGrid3x3" class="kernel-grid-3x3" aria-label="3×3 커널 가중치 입력"></div>
+            <div class="relu-toggle-box">
+              <label class="switch-label">
+                <input id="chkRelu" type="checkbox" checked />
+                <span>ReLU 활성화 <span class="tabular">max(0, x)</span></span>
+              </label>
+              <span style="font-size: 11px; color: var(--text-sub); line-height: 1.35;">
+                음수 응답을 0으로 억제하여 윤곽 특징만 다음 층으로 전달합니다.
+              </span>
+            </div>
+          </div>
+
+          <!-- 6×6 특징 맵 출력 -->
+          <div>
+            <div style="display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-sub); margin-bottom: 5px;">
+              <span style="font-weight: 600;">특징 맵 6×6 (셀 호버/클릭 시 수용 영역 표시)</span>
+              <span class="tabular" style="color: var(--accent-pine);">송록: 양(+) / 적갈: 음(-)</span>
+            </div>
+            <div id="featureMap6x6" class="fmap-grid-6x6" role="grid" aria-label="6×6 특징 맵"></div>
+          </div>
+
+          <!-- 내적 연산 실시간 검사기 -->
+          <div class="dot-inspector">
+            <div class="dot-inspector-title">
+              <span id="dotCellCoord">선택 위치: (행 0, 열 0) → 3×3 수용 영역</span>
+              <span id="dotCellResult" class="tabular" style="color: var(--accent-pine);">합계 = 0.0</span>
+            </div>
+            <div id="dotFormulaText" class="dot-formula">
+              특징 맵의 칸에 마우스를 올리면 9개 원소의 내적 수식이 표시됩니다.
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- [3단계] 풀링 3×3 (2×2 윈도우, Stride 2) -->
+      <article id="stageCard3" class="stage-card">
+        <div class="stage-header">
+          <div>
+            <span class="stage-badge">STAGE 3 · 풀링 (공간 압축)</span>
+            <h2 class="stage-title">3×3 풀링 특징 추출</h2>
+            <p class="stage-sub">2×2 윈도우(Stride 2)로 36칸을 9개 핵심 특징으로 요약</p>
+          </div>
+          <span class="dim-tag tabular">3 × 3 = 9</span>
+        </div>
+
+        <!-- Max / Avg 풀링 전환 -->
+        <div class="pool-mode-group">
+          <button id="btnPoolMax" class="btn btn-ochre-active" type="button">최대 풀링 (Max)</button>
+          <button id="btnPoolAvg" class="btn" type="button">평균 풀링 (Avg)</button>
+        </div>
+
+        <!-- 3×3 풀링 결과 그리드 (f1 ~ f9) -->
+        <div>
+          <div style="font-size: 11.5px; color: var(--text-sub); margin-bottom: 4px; text-align: center; font-weight: 600;">
+            추출된 9개 특징 벡터 <span class="tabular">(f₁ ~ f₉)</span>
+          </div>
+          <div id="poolGrid3x3" class="pool-grid-3x3" role="grid" aria-label="3×3 풀링 맵"></div>
+        </div>
+
+        <div id="poolInspector" class="pool-note">
+          <strong>풀링 연산 안내:</strong> 6×6 특징 맵을 겹치지 않는 2×2 구역 9개로 나누어 대표값을 뽑습니다. 칸에 마우스를 올리면 2단계의 해당 2×2 영역이 황토색으로 표시됩니다.
+        </div>
+      </article>
+
+      <!-- [4단계] 직렬화 & 완전연결 & 소프트맥스 -->
+      <article id="stageCard4" class="stage-card">
+        <div class="stage-header">
+          <div>
+            <span class="stage-badge">STAGE 4 · 분류기 &amp; 확률</span>
+            <h2 class="stage-title">완전연결(FC) &amp; 소프트맥스</h2>
+            <p class="stage-sub">9개 특징(f₁~f₉)과 9×10 가중치 행렬 내적으로 0~9 확률 산출</p>
+          </div>
+          <span class="dim-tag tabular">9 → 10</span>
+        </div>
+
+        <!-- 최종 판별 결과 배너 -->
+        <div class="prediction-banner">
+          <div>
+            <div class="pred-label">최종 판별 숫자 (argmax)</div>
+            <div style="font-size: 11.5px; color: var(--text-sub);">행 클릭 시 하단 바에서 수식 확인</div>
+          </div>
+          <div style="display: flex; align-items: baseline; gap: 10px;">
+            <span id="predDigitDisplay" class="pred-digit-big">0</span>
+            <span id="predProbDisplay" class="pred-prob-big">99.9%</span>
+          </div>
+        </div>
+
+        <!-- SVG 9→10 시냅스 연결선 + 0~9 로짓/확률 막대 -->
+        <div class="fc-visual-wrap">
+          <svg id="fcSvg" class="fc-svg" viewBox="0 0 118 290" aria-label="완전연결층 9대10 가중치 연결선"></svg>
+          <div id="probList" class="prob-list"></div>
+        </div>
+
+        <div class="legend-inline">
+          <span><span class="pos-txt">━ 송록선</span>: 양의 가중치 (+)</span>
+          <span><span class="neg-txt">━ 적갈선</span>: 음의 가중치 (-)</span>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ======================================================================
+         [기능 2] 알고리즘 원리 & MNIST 비교 보드 (접기/펼치기 + 탭)
+         ====================================================================== -->
+    <section class="edu-board" aria-label="CNN 알고리즘 원리 및 MNIST 비교 해설">
+      <div class="edu-board-header">
+        <div class="edu-tabs">
+          <button id="tabAlgo" class="btn btn-active" type="button">① 이진 vs 다중 분류 &amp; 파이프라인 원리</button>
+          <button id="tabMnist" class="btn" type="button">② 교육용 8×8 CNN vs 표준 MNIST 비교표</button>
+        </div>
+        <button id="btnToggleEduBoard" class="btn" type="button" aria-expanded="true">접기 ▲</button>
+      </div>
+
+      <div id="eduBoardBody" class="edu-board-body">
+        <!-- 탭 1: 알고리즘 설명 -->
+        <div id="panelAlgo">
+          <div class="compare-cards">
+            <div class="formula-card">
+              <h4>A. 이진 분류 (0 vs 1) — 시그모이드(Sigmoid)</h4>
+              <p style="font-size: 12.5px; color: var(--text-sub);">
+                출력 노드가 <strong>단 1개</strong>이며, 로짓 <code>z</code>를 0~1 사이 확률로 압축해 임계값(보통 0.5) 기준으로 두 클래스 중 하나를 판별합니다.
+              </p>
+              <div class="math-box">
+                P(y = 1 | x) = σ(z) = 1 / (1 + e⁻ᶻ), &nbsp; P(y = 0 | x) = 1 - σ(z)
+              </div>
+              <p style="font-size: 12px; color: var(--text-sub);">
+                · 판정 규칙: <code>σ(z) ≥ 0.5</code> 이면 <strong>1</strong>, 미만이면 <strong>0</strong>
+              </p>
+            </div>
+
+            <div class="formula-card">
+              <h4>B. 다중 분류 (0 ~ 9) — 소프트맥스(Softmax)</h4>
+              <p style="font-size: 12.5px; color: var(--text-sub);">
+                클래스 수만큼 <strong>10개의 출력 노드(z₀~z₉)</strong>를 두고, 지수함수 정규화를 거쳐 10개 확률의 총합이 정확히 <strong>1.0 (100%)</strong>이 되도록 만듭니다.
+              </p>
+              <div class="math-box ochre">
+                P(y = k | x) = exp(zₖ) / Σⱼ₌₀⁹ exp(zⱼ), &nbsp; Σₖ₌₀⁹ P(y = k) = 1
+              </div>
+              <p style="font-size: 12px; color: var(--text-sub);">
+                · 판정 규칙: 확률이 가장 큰 인덱스 <code>argmaxₖ P(y = k)</code> 선택
+              </p>
+            </div>
+          </div>
+
+          <h4 style="font-size: 13.5px; font-weight: 700; margin-bottom: 8px;">C. 전체 CNN 순전파 파이프라인 6단계 한 줄 요약</h4>
+          <ul class="pipeline-steps-list">
+            <li><span class="step-num-pill">1</span><strong>입력(Input):</strong> 8×8 격자(64픽셀)의 흑백 명암을 0과 1의 수치 행렬로 표현합니다.</li>
+            <li><span class="step-num-pill">2</span><strong>합성곱(Conv):</strong> 3×3 커널을 한 칸씩(Stride 1) 옮기며 국소 영역과 내적해 6×6 엣지 맵을 만듭니다.</li>
+            <li><span class="step-num-pill">3</span><strong>활성화(ReLU):</strong> <code>max(0, x)</code>로 음수 값을 0으로 잘라내어 비선형성과 특징 대비를 높입니다.</li>
+            <li><span class="step-num-pill">4</span><strong>풀링(Pooling):</strong> 2×2 구역(Stride 2)에서 최댓값/평균값을 뽑아 3×3(9개)으로 크기를 줄이고 위치 이동에 강해집니다.</li>
+            <li><span class="step-num-pill">5</span><strong>완전연결(FC):</strong> 3×3 특징을 1차원 벡터(f₁~f₉)로 편 뒤 9×10 가중치 행렬과 곱하고 편향(bₖ)을 더해 10개 로짓을 구합니다.</li>
+            <li><span class="step-num-pill">6</span><strong>소프트맥스(Softmax):</strong> 10개 로짓을 지수 비율로 변환하여 0~9 각 숫자일 확률(%) 분포를 출력합니다.</li>
+          </ul>
+        </div>
+
+        <!-- 탭 2: 표준 MNIST 비교표 -->
+        <div id="panelMnist" style="display: none;">
+          <p style="font-size: 12.5px; color: var(--text-sub); margin-bottom: 10px;">
+            본 시뮬레이터는 <strong>"MNIST와 별개로 연산 원리를 한눈에 추적하기 위해 설계된 교육용 축소 모델"</strong>입니다. 표준 MNIST 실전 CNN과의 구조적 차이는 다음과 같습니다.
+          </p>
+          <p style="font-size: 12.5px; color: var(--text-sub); margin-bottom: 10px;">
+            같은 이유로, 1단계에서 <strong>프리셋과 모양이 다른 숫자를 직접 그리면 오분류될 수 있습니다</strong>.
+            가중치가 10개 예시에서 수동으로 설계되었기 때문입니다(학습이 아니라 고정 설계).
+            표준 MNIST CNN이 <strong>60,000장의 필체 변형</strong>을 학습하는 까닭이 바로 이 일반화입니다.
+          </p>
+          <div class="table-responsive">
+            <table class="mnist-table">
+              <thead>
+                <tr>
+                  <th style="width: 16%;">비교 항목</th>
+                  <th class="col-lab" style="width: 42%;">본 교육용 8×8 CNN 랩 (현재 화면)</th>
+                  <th class="col-mnist" style="width: 42%;">표준 MNIST 손글씨 CNN (실전 벤치마크)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>입력 크기</strong></td>
+                  <td class="tabular"><strong>8 × 8</strong> 이진 픽셀 (총 64개 입력, 0 또는 1)</td>
+                  <td class="tabular"><strong>28 × 28</strong> 그레이스케일 픽셀 (총 784개 입력, 0~255 정규화)</td>
+                </tr>
+                <tr>
+                  <td><strong>데이터 규모</strong></td>
+                  <td>0~9 대표 프리셋 10종 + 사용자 실시간 드로잉</td>
+                  <td>학습용 <strong>60,000장</strong> + 평가용 <strong>10,000장</strong> (총 70,000장 실제 필기체)</td>
+                </tr>
+                <tr>
+                  <td><strong>커널 구성</strong></td>
+                  <td>단일 <strong>3 × 3</strong> 커널 1개 (윤곽선·엣지 수동 선택/편집)</td>
+                  <td>다층 다중 필터 (예: Conv1 32개 → Conv2 64개 등 수십~수백 개 커널)</td>
+                </tr>
+                <tr>
+                  <td><strong>학습 방식</strong></td>
+                  <td>수동/수학적 설계 고정 가중치 (순전파 Forward Pass 직관 시연)</td>
+                  <td>오차 역전파(Backpropagation) + 경사하강법(SGD/Adam)으로 자동 학습</td>
+                </tr>
+                <tr>
+                  <td><strong>파라미터 수</strong></td>
+                  <td class="tabular">커널 9 + FC 가중치 90 + 편향 10 = <strong>총 109개</strong></td>
+                  <td class="tabular">수만 ~ 수십만 개 (예: LeNet-5 기준 약 <strong>60,000개</strong> 이상)</td>
+                </tr>
+                <tr>
+                  <td><strong>정확도</strong></td>
+                  <td>기준 프리셋 10종 <strong>10/10 (100%)</strong> 분류 검증</td>
+                  <td>테스트 10,000장 기준 약 <strong>99.0% ~ 99.7%</strong> 일반화 성능</td>
+                </tr>
+                <tr>
+                  <td><strong>설계 목적</strong></td>
+                  <td>내적·ReLU·풀링·행렬곱·소프트맥스 <strong>단계별 수식과 시각적 직관 이해</strong></td>
+                  <td>다양한 사람의 필체 변형을 일반화하는 <strong>실용적 광학 문자 인식(OCR)</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ========================================================================
+       하단 고정 실시간 수식 바: 선택된 숫자 k의 로짓 z_k 및 소프트맥스 계산식
+       ======================================================================== -->
+  <footer class="bottom-formula-bar" aria-label="실시간 로짓 및 소프트맥스 수식 바">
+    <div class="bottom-formula-inner">
+      <div class="formula-row">
+        <span id="bottomLogitTag" class="formula-tag tabular">로짓 z₀</span>
+        <div id="bottomLogitExpr" class="formula-expr">z₀ = Σ(fᵢ·wᵢ₀) + b₀</div>
+      </div>
+      <div class="formula-row">
+        <span id="bottomSoftmaxTag" class="formula-tag ochre tabular">확률 P(y=0)</span>
+        <div id="bottomSoftmaxExpr" class="formula-expr">P(y=0) = exp(z₀) / Σexp(zⱼ)</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================================================
+       JavaScript: 8×8 CNN 순전파 엔진, 가중치 행렬, UI 바인딩 및 자체 검증
+       ======================================================================== -->
+  <script>
+    (function () {
+      "use strict";
+
+      /* ======================================================================
+         1. 0~9 숫자 프리셋 데이터 (8×8 이진 행렬)
+         - 각 패턴은 8×8 격자에서 실제 해당 숫자로 명확히 읽히도록 설계되었으며,
+           기본 커널(윤곽선 강조) → ReLU → Max Pooling(3×3) 통과 시 서로 고유한
+           9차원 특징 벡터를 형성합니다.
+         ====================================================================== */
+      const DIGIT_PRESETS = {
+        0: [
+          0,0,1,1,1,1,0,0,
+          0,1,1,0,0,1,1,0,
+          0,1,1,0,0,1,1,0,
+          0,1,1,0,0,1,1,0,
+          0,1,1,0,0,1,1,0,
+          0,1,1,0,0,1,1,0,
+          0,1,1,0,0,1,1,0,
+          0,0,1,1,1,1,0,0
+        ],
+        1: [
+          0,0,0,1,1,0,0,0,
+          0,0,1,1,1,0,0,0,
+          0,1,0,1,1,0,0,0,
+          0,0,0,1,1,0,0,0,
+          0,0,0,1,1,0,0,0,
+          0,0,0,1,1,0,0,0,
+          0,0,0,1,1,0,0,0,
+          0,1,1,1,1,1,1,0
+        ],
+        2: [
+          0,1,1,1,1,1,0,0,
+          1,1,0,0,0,1,1,0,
+          0,0,0,0,0,1,1,0,
+          0,0,0,1,1,1,0,0,
+          0,0,1,1,0,0,0,0,
+          0,1,1,0,0,0,0,0,
+          1,1,0,0,0,0,0,0,
+          1,1,1,1,1,1,1,0
+        ],
+        3: [
+          0,1,1,1,1,1,0,0,
+          1,1,0,0,0,1,1,0,
+          0,0,0,0,0,1,1,0,
+          0,0,1,1,1,1,0,0,
+          0,0,0,0,0,1,1,0,
+          0,0,0,0,0,1,1,0,
+          1,1,0,0,0,1,1,0,
+          0,1,1,1,1,1,0,0
+        ],
+        4: [
+          0,0,0,0,1,1,0,0,
+          0,0,0,1,1,1,0,0,
+          0,0,1,0,1,1,0,0,
+          0,1,0,0,1,1,0,0,
+          1,1,1,1,1,1,1,0,
+          0,0,0,0,1,1,0,0,
+          0,0,0,0,1,1,0,0,
+          0,0,0,0,1,1,0,0
+        ],
+        5: [
+          1,1,1,1,1,1,1,0,
+          1,1,0,0,0,0,0,0,
+          1,1,1,1,1,1,0,0,
+          0,0,0,0,0,1,1,0,
+          0,0,0,0,0,1,1,0,
+          0,0,0,0,0,1,1,0,
+          1,1,0,0,0,1,1,0,
+          0,1,1,1,1,1,0,0
+        ],
+        6: [
+          0,0,1,1,1,1,0,0,
+          0,1,1,0,0,0,0,0,
+          1,1,0,0,0,0,0,0,
+          1,1,1,1,1,1,0,0,
+          1,1,0,0,0,1,1,0,
+          1,1,0,0,0,1,1,0,
+          1,1,0,0,0,1,1,0,
+          0,1,1,1,1,1,0,0
+        ],
+        7: [
+          1,1,1,1,1,1,1,0,
+          1,1,0,0,0,1,1,0,
+          0,0,0,0,1,1,0,0,
+          0,0,0,1,1,0,0,0,
+          0,0,1,1,0,0,0,0,
+          0,0,1,1,0,0,0,0,
+          0,0,1,1,0,0,0,0,
+          0,0,1,1,0,0,0,0
+        ],
+        8: [
+          0,1,1,1,1,1,0,0,
+          1,1,0,0,0,1,1,0,
+          1,1,0,0,0,1,1,0,
+          0,1,1,1,1,1,0,0,
+          1,1,0,0,0,1,1,0,
+          1,1,0,0,0,1,1,0,
+          1,1,0,0,0,1,1,0,
+          0,1,1,1,1,1,0,0
+        ],
+        9: [
+          0,1,1,1,1,1,0,0,
+          1,1,0,0,0,1,1,0,
+          1,1,0,0,0,1,1,0,
+          0,1,1,1,1,1,1,0,
+          0,0,0,0,0,1,1,0,
+          0,0,0,0,0,1,1,0,
+          0,0,0,0,1,1,0,0,
+          0,1,1,1,1,0,0,0
+        ]
+      };
+
+      /* ======================================================================
+         2. 3×3 합성곱 커널 프리셋 5종
+         - 기본값("outline"): 라플라시안 기반 윤곽선 강조 커널 [0,-1,0, -1,4,-1, 0,-1,0]
+         ====================================================================== */
+      const KERNEL_PRESETS = [
+        { id: "outline", name: "윤곽선 강조", weights: [0, -1, 0, -1, 4, -1, 0, -1, 0] },
+        { id: "vertical", name: "수직 엣지", weights: [-1, 0, 1, -2, 0, 2, -1, 0, 1] },
+        { id: "horizontal", name: "수평 엣지", weights: [-1, -2, -1, 0, 0, 0, 1, 2, 1] },
+        { id: "diagonal", name: "대각선", weights: [2, -1, -1, -1, 2, -1, -1, -1, 2] },
+        { id: "sharpen", name: "선명하게", weights: [0, -1, 0, -1, 5, -1, 0, -1, 0] }
+      ];
+
+      /* ======================================================================
+         3. 순수 연산 함수 (합성곱 → ReLU → 풀링)
+         ====================================================================== */
+      /**
+       * 8×8 입력과 3×3 커널의 유효(Valid) 합성곱 (Stride = 1) → 6×6 특징 맵 반환
+       * 수식: S[r][c] = Σ_{u=0..2} Σ_{v=0..2} X[r+u][c+v] · K[u][v]
+       */
+      function computeConv6x6(input8x8, kernel3x3, useRelu) {
+        const rawMap = new Array(36);
+        const actMap = new Array(36);
+        for (let r = 0; r < 6; r++) {
+          for (let c = 0; c < 6; c++) {
+            let sum = 0;
+            for (let u = 0; u < 3; u++) {
+              for (let v = 0; v < 3; v++) {
+                const px = input8x8[(r + u) * 8 + (c + v)];
+                const kw = kernel3x3[u * 3 + v];
+                sum += px * kw;
+              }
+            }
+            const idx = r * 6 + c;
+            rawMap[idx] = sum;
+            actMap[idx] = useRelu ? Math.max(0, sum) : sum;
+          }
+        }
+        return { rawMap, actMap };
+      }
+
+      /**
+       * 6×6 특징 맵에 2×2 풀링(Stride = 2) 적용 → 3×3 (9차원 특징 벡터 f1~f9)
+       */
+      function computePool3x3(actMap6x6, mode) {
+        const pooled = new Array(9);
+        for (let pr = 0; pr < 3; pr++) {
+          for (let pc = 0; pc < 3; pc++) {
+            const r0 = pr * 2;
+            const c0 = pc * 2;
+            const vals = [
+              actMap6x6[r0 * 6 + c0],
+              actMap6x6[r0 * 6 + (c0 + 1)],
+              actMap6x6[(r0 + 1) * 6 + c0],
+              actMap6x6[(r0 + 1) * 6 + (c0 + 1)]
+            ];
+            if (mode === "max") {
+              pooled[pr * 3 + pc] = Math.max(...vals);
+            } else {
+              pooled[pr * 3 + pc] = (vals[0] + vals[1] + vals[2] + vals[3]) / 4;
+            }
+          }
+        }
+        return pooled;
+      }
+
+      /* ======================================================================
+         4. 완전연결(FC) 9×10 가중치 행렬 W 및 편향(Bias) b
+         - 수학적 일관성: 기본 커널('윤곽선 강조') + ReLU 에서 0~9 프리셋이 만드는
+           9차원 특징 벡터 μ_0~μ_9 에 대해, 모든 프리셋 k가 자기 클래스에서 1순위가
+           되도록 하는 제약(z_k(μ_k) - z_j(μ_k) ≥ margin, j≠k)을 퍼셉트론형 마진
+           최대화로 풀어 W, b를 구했습니다(오프라인 계산 후 상수로 고정).
+           이어서 소프트맥스 확률이 강의 시연에 충분히 또렷하도록 해 전체를 양수배
+           (약 11.7배)한 뒤 소수점 2자리로 반올림했습니다. 로짓의 순서는 양수배에
+           영향받지 않으므로 분류 결과는 그대로 유지됩니다.
+           검증: 기본 설정(Max 풀링) 0~9 전 프리셋 10/10, Avg 풀링에서도 10/10
+                 (최저 1순위 확률 84.0%).
+           어떤 if문 분기나 확률 하드코딩 없이 z_k = Σ(f_i · w_ik) + b_k 행렬곱만으로
+           분류가 이루어집니다.
+         ====================================================================== */
+      const FC_PARAMS = {
+        // W[i][k]: i번째 풀링 특징(f_i, 0..8) → k번째 출력 클래스(0~9) 로짓 가중치
+        W: [
+          [3.25, 3.23, -0.80, 5.21, 1.12, 2.09, 2.38, -0.54, -14.97, -1.14],
+          [-1.94, 1.21, -2.31, -3.88, 3.31, 5.00, -1.20, 2.86, -1.31, -1.78],
+          [1.84, -1.39, 2.20, 0.86, -1.46, -0.02, -5.81, 2.41, 1.73, -0.16],
+          [-1.59, -1.32, -2.20, -11.49, 2.21, -3.68, -0.93, 0.58, 16.51, 2.34],
+          [-7.79, 0.80, 3.11, 4.14, -0.21, -3.72, 1.24, 2.21, -1.60, 1.13],
+          [-1.64, -1.29, 0.43, 1.61, 1.57, 2.38, 2.27, -3.46, 0.91, -2.68],
+          [4.51, -0.76, 4.97, 7.44, -2.31, 2.56, -0.98, 0.03, -8.63, -6.89],
+          [-0.52, 1.82, -2.20, -2.32, 0.63, -0.40, -0.51, 2.02, -5.74, 7.45],
+          [2.38, -1.07, -6.12, 2.86, -1.22, 1.70, 2.30, -2.84, -0.79, 2.83]
+        ],
+        // b[k]: k번째 클래스 편향
+        b: [1.15, 1.05, 0.52, -4.60, -0.08, -0.15, 1.56, 1.14, -1.28, 0.69]
+      };
+
+      /**
+       * 완전연결(FC) + 소프트맥스(Softmax) 순전파
+       * z_k = Σ_{i=0..8} (f_i · W[i][k]) + b[k]
+       * P(y = k) = exp(z_k - maxZ) / Σ_{j=0..9} exp(z_j - maxZ)  (수치 안정화 적용)
+       */
+      function computeSoftmaxClassifier(features9) {
+        const logits = new Array(10).fill(0);
+        for (let k = 0; k < 10; k++) {
+          let z = FC_PARAMS.b[k];
+          for (let i = 0; i < 9; i++) {
+            z += features9[i] * FC_PARAMS.W[i][k];
+          }
+          logits[k] = z;
+        }
+
+        const maxZ = Math.max(...logits);
+        const exps = logits.map((z) => Math.exp(z - maxZ));
+        const sumExp = exps.reduce((acc, v) => acc + v, 0) || 1;
+        const probs = exps.map((e) => e / sumExp);
+
+        let topClass = 0;
+        for (let k = 1; k < 10; k++) {
+          if (probs[k] > probs[topClass]) topClass = k;
+        }
+
+        return { logits, exps, sumExp, maxZ, probs, topClass };
+      }
+
+      /**
+       * 단일 8×8 입력에 대한 전체 CNN 파이프라인 실행
+       */
+      function forwardPass(input8x8, kernel3x3, useRelu, poolMode) {
+        const conv = computeConv6x6(input8x8, kernel3x3, useRelu);
+        const pool = computePool3x3(conv.actMap, poolMode);
+        const cls = computeSoftmaxClassifier(pool);
+        return {
+          rawMap: conv.rawMap,
+          actMap: conv.actMap,
+          poolFeatures: pool,
+          logits: cls.logits,
+          exps: cls.exps,
+          sumExp: cls.sumExp,
+          maxZ: cls.maxZ,
+          probs: cls.probs,
+          topClass: cls.topClass
+        };
+      }
+
+      /* ======================================================================
+         5. 애플리케이션 상태 관리
+         ====================================================================== */
+      const state = {
+        activePresetDigit: 0,
+        grid8x8: [...DIGIT_PRESETS[0]],
+        drawTool: "draw", // "draw" | "erase"
+        isPointerDown: false,
+        showPixelValues: false,
+
+        activeKernelId: "outline",
+        kernel3x3: [...KERNEL_PRESETS[0].weights],
+        useRelu: true,
+
+        poolMode: "max", // "max" | "avg"
+
+        selectedConvCell: 0, // 0..35 (2단계 수용 영역 및 내적 검사)
+        hoveredPoolCell: null, // 0..8 (3단계 풀링 윈도우 하이라이트)
+        selectedClassForFormula: 0, // 0..9 (4단계 및 하단 수식 바 선택 클래스)
+        userPinnedClass: false,
+
+        currentStep: 1, // 1..4
+        isPlaying: false,
+        speed: 1.0,
+        playTimerId: null,
+
+        lastOutput: null
+      };
+
+      /* ======================================================================
+         6. 자체 검증 벤치마크 함수 (0~9 모든 프리셋 순회 검증)
+         ====================================================================== */
+      function runPresetBenchmark(logToConsole = false) {
+        const rows = [];
+        let correctCount = 0;
+
+        for (let digit = 0; digit <= 9; digit++) {
+          const out = forwardPass(
+            DIGIT_PRESETS[digit],
+            state.kernel3x3,
+            state.useRelu,
+            state.poolMode
+          );
+          const isMatch = out.topClass === digit;
+          if (isMatch) correctCount++;
+
+          rows.push({
+            "정답 숫자": digit,
+            "예측 결과": out.topClass,
+            "정답 여부": isMatch ? "O (일치)" : "X (불일치)",
+            "최고 확률(%)": (out.probs[out.topClass] * 100).toFixed(2) + "%",
+            "정답 로짓(z)": out.logits[digit].toFixed(3)
+          });
+        }
+
+        if (logToConsole && typeof console !== "undefined" && console.table) {
+          console.log(`[CNN 8×8 검증] 커널="${state.activeKernelId}", ReLU=${state.useRelu}, 풀링=${state.poolMode} → 정확도 ${correctCount}/10`);
+          console.table(rows);
+        }
+
+        const badge = document.getElementById("accuracyBadge");
+        badge.textContent = `프리셋 정확도 ${correctCount}/10`;
+        if (correctCount === 10) {
+          badge.classList.remove("warn");
+        } else {
+          badge.classList.add("warn");
+        }
+
+        return { correctCount, rows };
+      }
+
+      /* ======================================================================
+         7. UI 렌더링 및 상호작용 바인딩
+         ====================================================================== */
+      function formatNum(n) {
+        return Number.isInteger(n) ? String(n) : n.toFixed(1);
+      }
+
+      // 1단계: 숫자 프리셋 버튼 초기화
+      function initDigitPresetButtons() {
+        const container = document.getElementById("digitPresetContainer");
+        container.innerHTML = "";
+        for (let d = 0; d <= 9; d++) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "digit-btn tabular" + (d === state.activePresetDigit ? " active" : "");
+          btn.textContent = String(d);
+          btn.dataset.digit = String(d);
+          btn.addEventListener("click", () => {
+            state.activePresetDigit = d;
+            state.grid8x8 = [...DIGIT_PRESETS[d]];
+            state.userPinnedClass = false;
+            updateAll();
+          });
+          container.appendChild(btn);
+        }
+      }
+
+      // 1단계: 8×8 픽셀 그리드 생성 및 마우스/터치 드래그 이벤트 연결
+      function initInputGrid8x8() {
+        const gridEl = document.getElementById("inputGrid8x8");
+        gridEl.innerHTML = "";
+
+        for (let idx = 0; idx < 64; idx++) {
+          const cell = document.createElement("div");
+          cell.className = "px-cell off";
+          cell.dataset.idx = String(idx);
+          gridEl.appendChild(cell);
+        }
+
+        const applyPaint = (idx) => {
+          if (idx < 0 || idx >= 64) return;
+          const targetVal = state.drawTool === "draw" ? 1 : 0;
+          if (state.grid8x8[idx] !== targetVal) {
+            state.grid8x8[idx] = targetVal;
+            state.activePresetDigit = null; // 사용자 직접 수정 상태
+            state.userPinnedClass = false;
+            updateAll();
+          }
+        };
+
+        gridEl.addEventListener("pointerdown", (e) => {
+          const cell = e.target.closest(".px-cell");
+          if (!cell) return;
+          e.preventDefault();
+          state.isPointerDown = true;
+          gridEl.setPointerCapture(e.pointerId);
+          applyPaint(Number(cell.dataset.idx));
+        });
+
+        gridEl.addEventListener("pointermove", (e) => {
+          if (!state.isPointerDown) return;
+          const elUnderPointer = document.elementFromPoint(e.clientX, e.clientY);
+          const cell = elUnderPointer && elUnderPointer.closest(".px-cell");
+          if (cell) {
+            applyPaint(Number(cell.dataset.idx));
+          }
+        });
+
+        const stopPointer = () => {
+          state.isPointerDown = false;
+        };
+        gridEl.addEventListener("pointerup", stopPointer);
+        gridEl.addEventListener("pointercancel", stopPointer);
+      }
+
+      // 2단계: 3×3 커널 프리셋 버튼 및 9칸 입력칸 생성
+      function initKernelControls() {
+        const presetWrap = document.getElementById("kernelPresetContainer");
+        presetWrap.innerHTML = "";
+        KERNEL_PRESETS.forEach((kp) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "btn" + (kp.id === state.activeKernelId ? " btn-active" : "");
+          btn.textContent = kp.name;
+          btn.dataset.kid = kp.id;
+          btn.addEventListener("click", () => {
+            state.activeKernelId = kp.id;
+            state.kernel3x3 = [...kp.weights];
+            syncKernelInputsFromState();
+            updateAll(true);
+          });
+          presetWrap.appendChild(btn);
+        });
+
+        const kGrid = document.getElementById("kernelGrid3x3");
+        kGrid.innerHTML = "";
+        for (let i = 0; i < 9; i++) {
+          const inp = document.createElement("input");
+          inp.type = "number";
+          inp.step = "0.5";
+          inp.className = "kernel-input tabular";
+          inp.value = String(state.kernel3x3[i]);
+          inp.setAttribute("aria-label", `커널 가중치 ${i + 1}`);
+          inp.addEventListener("input", () => {
+            const parsed = parseFloat(inp.value);
+            state.kernel3x3[i] = Number.isFinite(parsed) ? parsed : 0;
+            state.activeKernelId = "custom";
+            updateAll(true);
+          });
+          kGrid.appendChild(inp);
+        }
+      }
+
+      function syncKernelInputsFromState() {
+        const inputs = document.querySelectorAll("#kernelGrid3x3 .kernel-input");
+        inputs.forEach((inp, i) => {
+          inp.value = String(state.kernel3x3[i]);
+        });
+      }
+
+      // 2단계: 6×6 특징 맵 그리드 초기화
+      function initFeatureMap6x6() {
+        const fmapEl = document.getElementById("featureMap6x6");
+        fmapEl.innerHTML = "";
+        for (let idx = 0; idx < 36; idx++) {
+          const cell = document.createElement("div");
+          cell.className = "fmap-cell";
+          cell.dataset.idx = String(idx);
+          const selectCell = () => {
+            state.selectedConvCell = idx;
+            renderStage1And2();
+          };
+          cell.addEventListener("mouseenter", selectCell);
+          cell.addEventListener("click", selectCell);
+          fmapEl.appendChild(cell);
+        }
+      }
+
+      // 3단계: 3×3 풀링 그리드 초기화
+      function initPoolGrid3x3() {
+        const poolEl = document.getElementById("poolGrid3x3");
+        poolEl.innerHTML = "";
+        for (let idx = 0; idx < 9; idx++) {
+          const cell = document.createElement("div");
+          cell.className = "pool-cell";
+          cell.dataset.idx = String(idx);
+          cell.innerHTML = `<span class="pool-idx">f${idx + 1}</span><span class="pool-val">0.0</span>`;
+
+          cell.addEventListener("mouseenter", () => {
+            state.hoveredPoolCell = idx;
+            renderStage2And3();
+          });
+          cell.addEventListener("mouseleave", () => {
+            state.hoveredPoolCell = null;
+            renderStage2And3();
+          });
+          cell.addEventListener("click", () => {
+            state.hoveredPoolCell = state.hoveredPoolCell === idx ? null : idx;
+            renderStage2And3();
+          });
+          poolEl.appendChild(cell);
+        }
+      }
+
+      /* ======================================================================
+         8. 단계별 화면 갱신 렌더러
+         ====================================================================== */
+      function renderStage1And2() {
+        // 숫자 프리셋 활성 표시
+        document.querySelectorAll("#digitPresetContainer .digit-btn").forEach((btn) => {
+          const d = Number(btn.dataset.digit);
+          btn.classList.toggle("active", state.activePresetDigit === d);
+        });
+
+        // 그리기 도구 버튼 활성 표시
+        document.getElementById("btnToolDraw").classList.toggle("btn-active", state.drawTool === "draw");
+        document.getElementById("btnToolErase").classList.toggle("btn-active", state.drawTool === "erase");
+        const pxToggleBtn = document.getElementById("btnTogglePixelVal");
+        pxToggleBtn.textContent = `픽셀 수치: ${state.showPixelValues ? "ON" : "OFF"}`;
+        pxToggleBtn.classList.toggle("btn-active", state.showPixelValues);
+
+        // 커널 프리셋 버튼 및 입력칸 색상 스타일링
+        document.querySelectorAll("#kernelPresetContainer .btn").forEach((btn) => {
+          btn.classList.toggle("btn-active", btn.dataset.kid === state.activeKernelId);
+        });
+        document.querySelectorAll("#kernelGrid3x3 .kernel-input").forEach((inp, i) => {
+          const v = state.kernel3x3[i];
+          inp.classList.toggle("pos", v > 0);
+          inp.classList.toggle("neg", v < 0);
+        });
+
+        // 선택된 6×6 특징 맵 셀의 8×8 내 3×3 수용 영역 좌표 계산
+        const selR = Math.floor(state.selectedConvCell / 6);
+        const selC = state.selectedConvCell % 6;
+
+        // 8×8 입력 픽셀 셀 렌더링
+        const pxCells = document.querySelectorAll("#inputGrid8x8 .px-cell");
+        pxCells.forEach((cell, idx) => {
+          const r = Math.floor(idx / 8);
+          const c = idx % 8;
+          const val = state.grid8x8[idx];
+          const inReceptive = r >= selR && r < selR + 3 && c >= selC && c < selC + 3;
+
+          cell.className = "px-cell " + (val === 1 ? "on" : "off") + (inReceptive ? " receptive-highlight" : "");
+          cell.textContent = state.showPixelValues ? String(val) : "";
+        });
+
+        // 6×6 특징 맵 렌더링
+        const out = state.lastOutput;
+        if (!out) return;
+
+        const maxAbs = Math.max(1, ...out.actMap.map((v) => Math.abs(v)));
+        const fmapCells = document.querySelectorAll("#featureMap6x6 .fmap-cell");
+
+        // 3단계 풀링 셀 호버 시 대응 2×2 영역 좌표
+        let poolR0 = -1, poolC0 = -1;
+        if (state.hoveredPoolCell !== null) {
+          poolR0 = Math.floor(state.hoveredPoolCell / 3) * 2;
+          poolC0 = (state.hoveredPoolCell % 3) * 2;
+        }
+
+        fmapCells.forEach((cell, idx) => {
+          const r = Math.floor(idx / 6);
+          const c = idx % 6;
+          const val = out.actMap[idx];
+          const ratio = Math.min(1, Math.abs(val) / maxAbs);
+
+          if (val > 0) {
+            cell.style.backgroundColor = `rgba(46, 91, 76, ${(0.12 + ratio * 0.68).toFixed(2)})`;
+            cell.style.color = ratio > 0.52 ? "#FFFFFF" : "#23221F";
+          } else if (val < 0) {
+            cell.style.backgroundColor = `rgba(184, 93, 67, ${(0.12 + ratio * 0.65).toFixed(2)})`;
+            cell.style.color = ratio > 0.52 ? "#FFFFFF" : "#23221F";
+          } else {
+            cell.style.backgroundColor = "#FFFFFF";
+            cell.style.color = "#888277";
+          }
+
+          cell.textContent = formatNum(val);
+          cell.classList.toggle("selected-cell", idx === state.selectedConvCell);
+
+          const inPoolWin =
+            poolR0 >= 0 && r >= poolR0 && r < poolR0 + 2 && c >= poolC0 && c < poolC0 + 2;
+          cell.classList.toggle("pool-window-highlight", inPoolWin);
+        });
+
+        // 내적 연산 수식 텍스트 갱신
+        const terms = [];
+        for (let u = 0; u < 3; u++) {
+          for (let v = 0; v < 3; v++) {
+            const px = state.grid8x8[(selR + u) * 8 + (selC + v)];
+            const kw = state.kernel3x3[u * 3 + v];
+            const kwStr = kw < 0 ? `(${formatNum(kw)})` : formatNum(kw);
+            terms.push(`${px}·${kwStr}`);
+          }
+        }
+        const rawSum = out.rawMap[state.selectedConvCell];
+        const actVal = out.actMap[state.selectedConvCell];
+
+        document.getElementById("dotCellCoord").textContent =
+          `선택 셀 (행 ${selR + 1}, 열 ${selC + 1}) ← 입력 [${selR + 1}..${selR + 3}, ${selC + 1}..${selC + 3}]`;
+        document.getElementById("dotCellResult").textContent = state.useRelu
+          ? `합 ${formatNum(rawSum)} → ReLU ${formatNum(actVal)}`
+          : `합 = ${formatNum(rawSum)}`;
+        document.getElementById("dotFormulaText").textContent =
+          `${terms.join(" + ")} = ${formatNum(rawSum)}` +
+          (state.useRelu ? `  ⇒  max(0, ${formatNum(rawSum)}) = ${formatNum(actVal)}` : "");
+      }
+
+      function renderStage2And3() {
+        renderStage1And2();
+
+        const out = state.lastOutput;
+        if (!out) return;
+
+        document.getElementById("btnPoolMax").classList.toggle("btn-ochre-active", state.poolMode === "max");
+        document.getElementById("btnPoolAvg").classList.toggle("btn-ochre-active", state.poolMode === "avg");
+
+        const maxPool = Math.max(1, ...out.poolFeatures.map((v) => Math.abs(v)));
+        const poolCells = document.querySelectorAll("#poolGrid3x3 .pool-cell");
+
+        poolCells.forEach((cell, idx) => {
+          const val = out.poolFeatures[idx];
+          const ratio = Math.min(1, Math.abs(val) / maxPool);
+          if (val > 0) {
+            cell.style.backgroundColor = `rgba(201, 166, 91, ${(0.12 + ratio * 0.55).toFixed(2)})`;
+          } else if (val < 0) {
+            cell.style.backgroundColor = `rgba(184, 93, 67, ${(0.12 + ratio * 0.45).toFixed(2)})`;
+          } else {
+            cell.style.backgroundColor = "#FFFFFF";
+          }
+          cell.querySelector(".pool-val").textContent = formatNum(val);
+          cell.classList.toggle("active-pool", state.hoveredPoolCell === idx);
+        });
+
+        const inspector = document.getElementById("poolInspector");
+        if (state.hoveredPoolCell !== null) {
+          const idx = state.hoveredPoolCell;
+          const r0 = Math.floor(idx / 3) * 2;
+          const c0 = (idx % 3) * 2;
+          const v00 = out.actMap[r0 * 6 + c0];
+          const v01 = out.actMap[r0 * 6 + (c0 + 1)];
+          const v10 = out.actMap[(r0 + 1) * 6 + c0];
+          const v11 = out.actMap[(r0 + 1) * 6 + (c0 + 1)];
+          const opName = state.poolMode === "max" ? "max" : "avg";
+          inspector.innerHTML =
+            `<strong>특징 f${idx + 1} (풀링 행 ${Math.floor(idx / 3) + 1}, 열 ${(idx % 3) + 1}):</strong> ` +
+            `<span class="tabular">${opName}([${formatNum(v00)}, ${formatNum(v01)}, ${formatNum(v10)}, ${formatNum(v11)}]) = <strong>${formatNum(out.poolFeatures[idx])}</strong></span>`;
+        } else {
+          inspector.innerHTML =
+            `<strong>풀링 연산 안내:</strong> 6×6 특징 맵을 겹치지 않는 2×2 구역 9개로 나누어 대표값을 뽑습니다. 칸에 마우스를 올리면 2단계의 해당 2×2 영역이 황토색으로 표시됩니다.`;
+        }
+      }
+
+      function renderStage4AndFormulaBar() {
+        const out = state.lastOutput;
+        if (!out) return;
+
+        if (!state.userPinnedClass) {
+          state.selectedClassForFormula = out.topClass;
+        }
+
+        // 상단 판별 배너 갱신
+        document.getElementById("predDigitDisplay").textContent = String(out.topClass);
+        document.getElementById("predProbDisplay").textContent =
+          `${(out.probs[out.topClass] * 100).toFixed(1)}%`;
+
+        // 0~9 확률 막대 리스트 렌더링
+        const probListEl = document.getElementById("probList");
+        probListEl.innerHTML = "";
+        for (let k = 0; k < 10; k++) {
+          const row = document.createElement("div");
+          const isTop = k === out.topClass;
+          const isSel = k === state.selectedClassForFormula;
+          row.className =
+            "prob-row" + (isTop ? " top-class" : "") + (isSel ? " selected-class" : "");
+          const pct = (out.probs[k] * 100).toFixed(1);
+
+          row.innerHTML = `
+            <span class="prob-digit">${k}</span>
+            <div class="prob-bar-bg">
+              <div class="prob-bar-fill" style="width: ${Math.max(1, out.probs[k] * 100).toFixed(1)}%"></div>
+            </div>
+            <span class="prob-logit">${out.logits[k].toFixed(1)}</span>
+            <span class="prob-pct">${pct}%</span>
+          `;
+
+          row.addEventListener("click", () => {
+            state.selectedClassForFormula = k;
+            state.userPinnedClass = true;
+            renderStage4AndFormulaBar();
+          });
+
+          probListEl.appendChild(row);
+        }
+
+        // SVG 9개 입력 노드(f1~f9) → 10개 출력 노드(0~9) 시냅스 연결선 렌더링
+        const svg = document.getElementById("fcSvg");
+        const w = 118;
+        const h = 290;
+        const leftX = 22;
+        const rightX = 96;
+        const leftYs = Array.from({ length: 9 }, (_, i) => 22 + i * 30.5);
+        const rightYs = Array.from({ length: 10 }, (_, k) => 15 + k * 28.8);
+
+        let linesSvg = "";
+        let maxW = 0.01;
+        for (let i = 0; i < 9; i++) {
+          for (let k = 0; k < 10; k++) {
+            maxW = Math.max(maxW, Math.abs(FC_PARAMS.W[i][k]));
+          }
+        }
+
+        const focusK = state.selectedClassForFormula;
+        for (let i = 0; i < 9; i++) {
+          for (let k = 0; k < 10; k++) {
+            const weight = FC_PARAMS.W[i][k];
+            const normMag = Math.abs(weight) / maxW;
+            const isFocused = k === focusK;
+            const strokeColor = weight >= 0 ? "#2E5B4C" : "#B85D43";
+            const opacity = isFocused
+              ? (0.28 + normMag * 0.72).toFixed(2)
+              : (0.04 + normMag * 0.1).toFixed(2);
+            const strokeWidth = isFocused
+              ? (0.7 + normMag * 2.1).toFixed(2)
+              : (0.4 + normMag * 0.6).toFixed(2);
+
+            linesSvg += `<line x1="${leftX}" y1="${leftYs[i]}" x2="${rightX}" y2="${rightYs[k]}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${opacity}" />`;
+          }
+        }
+
+        let nodesSvg = "";
+        const maxFeat = Math.max(1, ...out.poolFeatures);
+        for (let i = 0; i < 9; i++) {
+          const activeRatio = Math.min(1, Math.max(0, out.poolFeatures[i] / maxFeat));
+          const fill = activeRatio > 0.05 ? "#C9A65B" : "#F1EDE4";
+          nodesSvg += `
+            <circle cx="${leftX}" cy="${leftYs[i]}" r="7.5" fill="${fill}" stroke="#5E5A52" stroke-width="1" />
+            <text x="${leftX - 12}" y="${leftYs[i] + 3.5}" font-size="9" font-family="monospace" fill="#5E5A52" text-anchor="end">f${i + 1}</text>
+          `;
+        }
+
+        for (let k = 0; k < 10; k++) {
+          const isTop = k === out.topClass;
+          const isSel = k === focusK;
+          const fill = isTop ? "#2E5B4C" : isSel ? "#E6EFEA" : "#FFFFFF";
+          const textFill = isTop ? "#FFFFFF" : "#23221F";
+          const stroke = isTop || isSel ? "#2E5B4C" : "#888277";
+          nodesSvg += `
+            <circle cx="${rightX}" cy="${rightYs[k]}" r="8.5" fill="${fill}" stroke="${stroke}" stroke-width="${isSel ? 1.6 : 1}" />
+            <text x="${rightX}" y="${rightYs[k] + 3.5}" font-size="9.5" font-weight="700" font-family="monospace" fill="${textFill}" text-anchor="middle">${k}</text>
+          `;
+        }
+
+        svg.innerHTML = linesSvg + nodesSvg;
+
+        // 하단 고정 실시간 수식 바 업데이트
+        const k = focusK;
+        const termParts = [];
+        for (let i = 0; i < 9; i++) {
+          const fi = formatNum(out.poolFeatures[i]);
+          const wik = FC_PARAMS.W[i][k].toFixed(2);
+          termParts.push(`(${fi}·${wik})`);
+        }
+        const bk = FC_PARAMS.b[k];
+        const bkStr = bk >= 0 ? `+ ${bk.toFixed(2)}` : `- ${Math.abs(bk).toFixed(2)}`;
+        const zk = out.logits[k];
+
+        document.getElementById("bottomLogitTag").textContent = `로짓 z_${k}`;
+        document.getElementById("bottomLogitExpr").innerHTML =
+          `z_${k} = ${termParts.join(" + ")} ${bkStr} = <strong class="pos-txt">${zk.toFixed(3)}</strong>`;
+
+        const probPct = (out.probs[k] * 100).toFixed(2);
+        const allExpsSummary = out.logits
+          .map((z, idx) => (idx === k ? `<strong>e^(${z.toFixed(2)})</strong>` : `e^(${z.toFixed(2)})`))
+          .slice(0, 5)
+          .join(" + ") + " + …";
+
+        document.getElementById("bottomSoftmaxTag").textContent = `소프트맥스 P(y=${k})`;
+        document.getElementById("bottomSoftmaxExpr").innerHTML =
+          `P(y=${k}) = exp(${zk.toFixed(3)}) / Σⱼ₌₀⁹ exp(zⱼ) = ${Math.exp(zk).toFixed(2)} / ${out.logits.reduce((a, z) => a + Math.exp(z), 0).toFixed(2)} = <strong class="pos-txt">${probPct}%</strong> <span style="color:var(--text-muted);">[${allExpsSummary}]</span>`;
+      }
+
+      function updateAll(runBenchmark = false) {
+        state.lastOutput = forwardPass(
+          state.grid8x8,
+          state.kernel3x3,
+          state.useRelu,
+          state.poolMode
+        );
+        renderStage2And3();
+        renderStage4AndFormulaBar();
+        if (runBenchmark) {
+          runPresetBenchmark(false);
+        }
+      }
+
+      /* ======================================================================
+         9. 상단 재생 제어 바 & 4단계 스텝 하이라이트
+         ====================================================================== */
+      function setStep(stepNum) {
+        state.currentStep = ((stepNum - 1 + 4) % 4) + 1;
+        for (let s = 1; s <= 4; s++) {
+          const card = document.getElementById(`stageCard${s}`);
+          card.classList.toggle("is-current", s === state.currentStep);
+        }
+        document.getElementById("stepIndicator").textContent = `${state.currentStep} / 4`;
+        // 모바일처럼 카드가 세로로 쌓이는 화면에서는 현재 단계가 화면 밖일 수 있으므로 가까운 위치로 이동
+        const currentCard = document.getElementById(`stageCard${state.currentStep}`);
+        if (currentCard && currentCard.scrollIntoView) {
+          currentCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+      }
+
+      function stopPlayback() {
+        state.isPlaying = false;
+        if (state.playTimerId !== null) {
+          clearInterval(state.playTimerId);
+          state.playTimerId = null;
+        }
+        const btn = document.getElementById("btnPlayPause");
+        btn.textContent = "▶ 재생";
+      }
+
+      function startPlayback() {
+        stopPlayback();
+        state.isPlaying = true;
+        document.getElementById("btnPlayPause").textContent = "❚❚ 일시정지";
+        const intervalMs = Math.round(1400 / state.speed);
+        state.playTimerId = setInterval(() => {
+          // 4단계까지 시연한 뒤에는 자동으로 멈춥니다(무한 반복 방지).
+          if (state.currentStep >= 4) {
+            stopPlayback();
+            return;
+          }
+          setStep(state.currentStep + 1);
+        }, intervalMs);
+      }
+
+      function bindGlobalControls() {
+        document.getElementById("btnPlayPause").addEventListener("click", () => {
+          if (state.isPlaying) {
+            stopPlayback();
+          } else {
+            startPlayback();
+          }
+        });
+
+        document.getElementById("btnPrevStep").addEventListener("click", () => {
+          stopPlayback();
+          setStep(state.currentStep - 1);
+        });
+
+        document.getElementById("btnNextStep").addEventListener("click", () => {
+          stopPlayback();
+          setStep(state.currentStep + 1);
+        });
+
+        document.getElementById("btnReset").addEventListener("click", () => {
+          stopPlayback();
+          state.activePresetDigit = 0;
+          state.grid8x8 = [...DIGIT_PRESETS[0]];
+          state.drawTool = "draw";
+          state.showPixelValues = false;
+          state.activeKernelId = "outline";
+          state.kernel3x3 = [...KERNEL_PRESETS[0].weights];
+          state.useRelu = true;
+          state.poolMode = "max";
+          state.selectedConvCell = 0;
+          state.hoveredPoolCell = null;
+          state.userPinnedClass = false;
+          document.getElementById("chkRelu").checked = true;
+          syncKernelInputsFromState();
+          setStep(1);
+          updateAll(true);
+        });
+
+        const speedSlider = document.getElementById("speedSlider");
+        speedSlider.addEventListener("input", () => {
+          state.speed = parseFloat(speedSlider.value) || 1.0;
+          document.getElementById("speedValue").textContent = `${state.speed.toFixed(1)}×`;
+          if (state.isPlaying) {
+            startPlayback();
+          }
+        });
+
+        // 1단계 도구 버튼
+        document.getElementById("btnToolDraw").addEventListener("click", () => {
+          state.drawTool = "draw";
+          renderStage1And2();
+        });
+
+        document.getElementById("btnToolErase").addEventListener("click", () => {
+          state.drawTool = "erase";
+          renderStage1And2();
+        });
+
+        document.getElementById("btnClearGrid").addEventListener("click", () => {
+          state.grid8x8 = new Array(64).fill(0);
+          state.activePresetDigit = null;
+          state.userPinnedClass = false;
+          updateAll();
+        });
+
+        document.getElementById("btnTogglePixelVal").addEventListener("click", () => {
+          state.showPixelValues = !state.showPixelValues;
+          renderStage1And2();
+        });
+
+        // 2단계 ReLU 체크박스
+        document.getElementById("chkRelu").addEventListener("change", (e) => {
+          state.useRelu = e.target.checked;
+          updateAll(true);
+        });
+
+        // 3단계 Max / Avg 풀링 버튼
+        document.getElementById("btnPoolMax").addEventListener("click", () => {
+          state.poolMode = "max";
+          updateAll(true);
+        });
+
+        document.getElementById("btnPoolAvg").addEventListener("click", () => {
+          state.poolMode = "avg";
+          updateAll(true);
+        });
+
+        // 카드 클릭 시 해당 단계로 포커스 이동
+        for (let s = 1; s <= 4; s++) {
+          document.getElementById(`stageCard${s}`).addEventListener("click", (e) => {
+            if (e.target.closest("button, input")) return;
+            setStep(s);
+          });
+        }
+
+        // [기능 2] 설명·MNIST 비교 보드 탭 및 접기/펼치기
+        const tabAlgo = document.getElementById("tabAlgo");
+        const tabMnist = document.getElementById("tabMnist");
+        const panelAlgo = document.getElementById("panelAlgo");
+        const panelMnist = document.getElementById("panelMnist");
+        const eduBody = document.getElementById("eduBoardBody");
+        const btnToggleEdu = document.getElementById("btnToggleEduBoard");
+
+        tabAlgo.addEventListener("click", () => {
+          tabAlgo.classList.add("btn-active");
+          tabMnist.classList.remove("btn-active");
+          panelAlgo.style.display = "block";
+          panelMnist.style.display = "none";
+          if (eduBody.classList.contains("collapsed")) {
+            eduBody.classList.remove("collapsed");
+            btnToggleEdu.textContent = "접기 ▲";
+            btnToggleEdu.setAttribute("aria-expanded", "true");
+          }
+        });
+
+        tabMnist.addEventListener("click", () => {
+          tabMnist.classList.add("btn-active");
+          tabAlgo.classList.remove("btn-active");
+          panelMnist.style.display = "block";
+          panelAlgo.style.display = "none";
+          if (eduBody.classList.contains("collapsed")) {
+            eduBody.classList.remove("collapsed");
+            btnToggleEdu.textContent = "접기 ▲";
+            btnToggleEdu.setAttribute("aria-expanded", "true");
+          }
+        });
+
+        btnToggleEdu.addEventListener("click", () => {
+          const isCollapsed = eduBody.classList.toggle("collapsed");
+          btnToggleEdu.textContent = isCollapsed ? "펼치기 ▼" : "접기 ▲";
+          btnToggleEdu.setAttribute("aria-expanded", String(!isCollapsed));
+        });
+      }
+
+      /* ======================================================================
+         10. 초기화 엔트리포인트
+         ====================================================================== */
+      window.addEventListener("DOMContentLoaded", () => {
+        initDigitPresetButtons();
+        initInputGrid8x8();
+        initKernelControls();
+        initFeatureMap6x6();
+        initPoolGrid3x3();
+        bindGlobalControls();
+        setStep(1);
+        updateAll(false);
+        // 페이지 로드 시 0~9 전체 프리셋 정확도 검증 및 콘솔 표 출력
+        runPresetBenchmark(true);
+      });
+    })();
+  </script>
+</body>
+</html>
