@@ -7,9 +7,9 @@
   <style>
     /* ==========================================================================
        [디자인 시스템] 검이불루 화이불치(儉而不陋 華而不侈)
-       - 외부 폰트/CDN 없이 시스템 산세리프 및 모노스페이스 폰트 활용
-       - 한지 톤 미색(#F7F5F0 / #FBF9F5), 스톤 테두리(#E5E1D8), 송록색(#2E5B4C),
-         황토색(#C9A65B), 적갈색(#B85D43) 절제된 배색
+       - 외부 폰트/라이브러리 없이 시스템 폰트 + 순수 CSS/JS 활용
+       - 한지 톤 미색(#F7F5F0 / #FBF9F5), 스톤 1px 테두리(#E5E1D8),
+         송록색(#2E5B4C), 황토색(#C9A65B), 적갈색(#B85D43) 절제된 배색
        ========================================================================== */
     :root {
       --bg-page: #F7F5F0;
@@ -41,8 +41,8 @@
       background-color: var(--bg-page);
       color: var(--text-main);
       font-family: var(--font-sans);
-      font-size: 14px;
-      line-height: 1.5;
+      font-size: clamp(12.5px, 0.95vw, 14px);
+      line-height: 1.48;
       -webkit-font-smoothing: antialiased;
       overflow-x: hidden;
     }
@@ -62,34 +62,34 @@
       background-color: rgba(251, 249, 245, 0.96);
       backdrop-filter: blur(4px);
       border-bottom: 1px solid var(--border-strong);
-      padding: 10px 20px;
+      padding: 8px clamp(12px, 1.5vw, 20px);
     }
 
     .top-bar-inner {
-      max-width: 1480px;
+      max-width: 1580px;
       margin: 0 auto;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 8px 12px;
     }
 
     .brand-group {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
     .brand-title {
-      font-size: 16px;
+      font-size: clamp(14px, 1.15vw, 16px);
       font-weight: 700;
       letter-spacing: -0.02em;
       color: var(--text-main);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
     }
 
     .brand-mark {
@@ -103,15 +103,15 @@
     .accuracy-badge {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 3px 10px;
+      gap: 5px;
+      padding: 2px 8px;
       border-radius: 4px;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 600;
       border: 1px solid var(--accent-pine);
       background-color: var(--accent-pine-light);
       color: var(--accent-pine);
-      transition: all 0.2s ease;
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     }
 
     .accuracy-badge.warn {
@@ -120,11 +120,36 @@
       color: #7D6022;
     }
 
+    .stage-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 9px;
+      border-radius: 4px;
+      font-size: 11.5px;
+      font-weight: 600;
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-strong);
+      color: var(--text-main);
+      transition: opacity 0.22s ease, transform 0.22s ease, background-color 0.22s ease, border-color 0.22s ease;
+    }
+
+    .stage-status-pill.is-animating {
+      background-color: var(--accent-ochre-light);
+      border-color: var(--accent-ochre);
+      color: #6E5116;
+    }
+
+    .stage-status-pill.badge-swap {
+      opacity: 0.45;
+      transform: translateY(-2px);
+    }
+
     .playback-controls {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 5px;
     }
 
     .btn {
@@ -133,8 +158,8 @@
       color: var(--text-main);
       border: 1px solid var(--border-strong);
       border-radius: 5px;
-      padding: 6px 11px;
-      font-size: 12.5px;
+      padding: 5px 9px;
+      font-size: clamp(11px, 0.85vw, 12.5px);
       font-weight: 500;
       font-family: var(--font-sans);
       cursor: pointer;
@@ -144,6 +169,7 @@
       gap: 4px;
       transition: background-color 0.15s, border-color 0.15s, color 0.15s;
       user-select: none;
+      white-space: nowrap;
     }
 
     .btn:hover {
@@ -183,74 +209,119 @@
     .speed-control {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
+      gap: 5px;
+      padding: 3px 8px;
       border: 1px solid var(--border-stone);
       border-radius: 5px;
       background-color: var(--bg-subtle);
-      font-size: 12px;
+      font-size: 11.5px;
       color: var(--text-sub);
     }
 
     .speed-control input[type="range"] {
-      width: 76px;
+      width: 64px;
       accent-color: var(--accent-pine);
       cursor: pointer;
     }
 
     .step-indicator {
-      padding: 4px 10px;
+      padding: 3px 9px;
       border-radius: 5px;
       background-color: var(--bg-subtle);
       border: 1px solid var(--border-strong);
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 600;
       color: var(--accent-pine);
     }
 
     /* ==========================================================================
-       2. 메인 컨테이너 및 4단계 그리드 레이아웃
+       2. 메인 컨테이너 및 반응형 좌→우 4열 파이프라인 레이아웃
+       - 768px 미만: 1열 세로 스택 (화살표 ↓)
+       - 768px ~ 839px: 2열 그리드
+       - 840px 이상 (태블릿 가로 · 노트북 · 데스크톱): 한 줄 4열 좌→우 배치 + 화살표(→)
        ========================================================================== */
     .main-wrap {
-      max-width: 1480px;
+      max-width: 1580px;
       margin: 0 auto;
-      padding: 18px 20px 124px 20px; /* 하단 고정 수식 바 여백 확보 */
+      padding: clamp(12px, 1.4vw, 18px) clamp(10px, 1.4vw, 18px) 118px clamp(10px, 1.4vw, 18px);
     }
 
     .pipeline-grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 16px;
+      gap: 8px;
       align-items: stretch;
     }
 
-    @media (min-width: 960px) {
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 16px;
+      user-select: none;
+      padding: 2px 0;
+      transition: color 0.25s ease, transform 0.25s ease;
+    }
+
+    .flow-arrow .arrow-h { display: none; }
+    .flow-arrow .arrow-v { display: inline-block; }
+
+    .flow-arrow.is-active {
+      color: var(--accent-pine);
+      transform: scale(1.12);
+    }
+
+    /* 768px ~ 839px 세로 태블릿: 2열 보조 배치 */
+    @media (min-width: 768px) and (max-width: 839px) {
       .pipeline-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .flow-arrow {
+        display: none;
       }
     }
 
-    @media (min-width: 1360px) {
+    /* 840px 이상 가로 화면(태블릿 가로 · 노트북 · 데스크톱): 한 줄 4열 좌→우 + 화살표(→) */
+    @media (min-width: 840px) {
       .pipeline-grid {
-        grid-template-columns: 1.02fr 1.12fr 0.88fr 1.28fr;
+        grid-template-columns:
+          minmax(0, 1.02fr)
+          18px
+          minmax(0, 1.12fr)
+          18px
+          minmax(0, 0.86fr)
+          18px
+          minmax(0, 1.24fr);
+        gap: 4px;
       }
+      .flow-arrow {
+        padding: 0;
+        font-size: clamp(14px, 1.2vw, 18px);
+      }
+      .flow-arrow .arrow-h { display: inline-block; }
+      .flow-arrow .arrow-v { display: none; }
     }
 
-    /* 단계 카드 조형: 1px 얇은 테두리, 과한 그림자 배제 */
+    /* 단계 카드 조형: 1px 절제된 테두리 */
     .stage-card {
       background-color: var(--bg-card);
       border: 1px solid var(--border-stone);
-      border-radius: 8px;
-      padding: 16px;
+      border-radius: 7px;
+      padding: clamp(10px, 1.05vw, 15px);
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: clamp(8px, 0.9vw, 11px);
       position: relative;
-      transition: border-color 0.2s ease, background-color 0.2s ease;
+      min-width: 0;
+      transition: border-color 0.22s ease, background-color 0.22s ease;
     }
 
     .stage-card.is-current {
-      border: 1.5px solid var(--accent-pine);
+      border-color: var(--accent-pine);
       background-color: #FCFBF8;
     }
 
@@ -260,31 +331,33 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 3px;
+      height: 2.5px;
       background-color: var(--accent-pine);
-      border-radius: 7px 7px 0 0;
+      border-radius: 6px 6px 0 0;
     }
 
     .stage-header {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 8px;
-      padding-bottom: 10px;
+      gap: 6px;
+      padding-bottom: 8px;
       border-bottom: 1px solid var(--border-stone);
     }
 
     .stage-badge {
       display: inline-block;
-      font-size: 11px;
+      font-size: clamp(9.5px, 0.72vw, 11px);
       font-weight: 700;
-      letter-spacing: 0.03em;
-      padding: 2px 7px;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      padding: 2px 6px;
       border-radius: 4px;
       background-color: var(--bg-subtle);
       color: var(--text-sub);
       border: 1px solid var(--border-strong);
-      margin-bottom: 4px;
+      margin-bottom: 3px;
+      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
     }
 
     .stage-card.is-current .stage-badge {
@@ -294,88 +367,85 @@
     }
 
     .stage-title {
-      font-size: 15px;
+      font-size: clamp(13px, 1.02vw, 15px);
       font-weight: 700;
       color: var(--text-main);
+      line-height: 1.3;
     }
 
     .stage-sub {
-      font-size: 12px;
+      font-size: clamp(10.5px, 0.8vw, 12px);
       color: var(--text-sub);
+      line-height: 1.35;
+      margin-top: 2px;
     }
 
     .dim-tag {
-      font-size: 11.5px;
-      padding: 2px 7px;
+      font-size: clamp(10px, 0.78vw, 11.5px);
+      padding: 2px 6px;
       border-radius: 4px;
       background-color: var(--bg-subtle);
       color: var(--text-sub);
       border: 1px solid var(--border-stone);
       white-space: nowrap;
+      flex-shrink: 0;
     }
 
     /* ==========================================================================
-       3. 1단계: 입력 8×8 픽셀 그리드 및 숫자 프리셋
+       3. 1단계: 입력 8×8 픽셀 그리드 (초기 빈 캔버스 + 접이식 예시 프리셋)
        ========================================================================== */
-    .preset-digits {
-      display: grid;
-      grid-template-columns: repeat(10, 1fr);
-      gap: 4px;
-    }
-
-    .digit-btn {
-      padding: 6px 0;
-      border: 1px solid var(--border-strong);
-      border-radius: 4px;
-      background-color: var(--bg-card);
-      color: var(--text-main);
+    .canvas-guide-banner {
+      padding: 6px 9px;
+      border-radius: 5px;
+      background-color: var(--accent-pine-light);
+      border: 1px solid #C6DBD1;
+      color: var(--accent-pine);
+      font-size: clamp(11px, 0.82vw, 12px);
       font-weight: 600;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.12s;
+      text-align: center;
+      line-height: 1.4;
+      transition: opacity 0.2s ease, background-color 0.2s ease;
     }
 
-    .digit-btn:hover {
+    .canvas-guide-banner.is-drawn {
       background-color: var(--bg-subtle);
-    }
-
-    .digit-btn.active {
-      background-color: var(--accent-pine);
-      border-color: var(--accent-pine);
-      color: #FFFFFF;
+      border-color: var(--border-stone);
+      color: var(--text-sub);
+      font-weight: 500;
     }
 
     .tool-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
     }
 
     .tool-row .btn {
-      padding: 5px 8px;
-      font-size: 12px;
-      flex: 1 1 auto;
+      padding: 4px 6px;
+      font-size: clamp(10.5px, 0.8vw, 12px);
+      width: 100%;
     }
 
     .grid-wrap {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .pixel-grid-8x8 {
       display: grid;
       grid-template-columns: repeat(8, 1fr);
       width: 100%;
-      max-width: 264px;
+      max-width: clamp(188px, 16.5vw, 248px);
       aspect-ratio: 1 / 1;
       border: 1px solid var(--border-strong);
       border-radius: 4px;
       overflow: hidden;
       background-color: #FFFFFF;
-      touch-action: none; /* 터치 드래그 시 스크롤 방지 */
+      touch-action: none;
       user-select: none;
+      position: relative;
     }
 
     .px-cell {
@@ -384,11 +454,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: clamp(9px, 0.72vw, 11px);
       font-family: var(--font-mono);
       cursor: crosshair;
       position: relative;
-      transition: background-color 0.08s;
+      transition: background-color 0.08s ease, outline-color 0.08s ease;
     }
 
     .px-cell:nth-child(8n) { border-right: none; }
@@ -404,7 +474,7 @@
       color: var(--text-muted);
     }
 
-    /* 2단계 특징 맵 호버 시 1단계의 대응 3×3 수용 영역 하이라이트 */
+    /* 2단계 수용 영역 및 1→2 슬라이딩 커널 창 하이라이트 */
     .px-cell.receptive-highlight {
       outline: 2px solid var(--accent-ochre);
       outline-offset: -2px;
@@ -412,11 +482,92 @@
     }
 
     .px-cell.receptive-highlight.off {
-      background-color: var(--accent-ochre-light);
+      background-color: transparent;
     }
+
+    /* 1→2 슬라이딩 커널 창: 셀 단위 점멸 위에 부드럽게 이동하는 오버레이 */
+    .receptive-slider {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 37.5%;
+      height: 37.5%;
+      border: 2px solid var(--accent-ochre);
+      border-radius: 3px;
+      background-color: rgba(201, 166, 91, 0.16);
+      box-shadow: 0 0 0 1px rgba(201, 166, 91, 0.35) inset;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 3;
+      transition: left 0.13s linear, top 0.13s linear, opacity 0.22s ease;
+    }
+
+    .receptive-slider.is-visible { opacity: 1; }
 
     .px-cell.receptive-highlight.on {
       background-color: #3E3A2F;
+    }
+
+    /* 캔버스 아래 접이식 대표 숫자 예시 섹션 */
+    .preset-drawer {
+      border-top: 1px solid var(--border-stone);
+      padding-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .preset-toggle-btn {
+      width: 100%;
+      justify-content: space-between;
+      padding: 5px 8px;
+      font-size: clamp(10.5px, 0.8vw, 11.5px);
+      background-color: var(--bg-subtle);
+      border-color: var(--border-strong);
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .preset-panel {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      padding: 7px;
+      border-radius: 5px;
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-stone);
+    }
+
+    .preset-panel.open {
+      display: flex;
+    }
+
+    .preset-digits {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+    }
+
+    .digit-btn {
+      padding: 4px 0;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background-color 0.12s, color 0.12s, border-color 0.12s;
+    }
+
+    .digit-btn:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .digit-btn.active {
+      background-color: var(--accent-pine);
+      border-color: var(--accent-pine);
+      color: #FFFFFF;
     }
 
     /* ==========================================================================
@@ -425,26 +576,26 @@
     .kernel-presets {
       display: flex;
       flex-wrap: wrap;
-      gap: 4px;
+      gap: 3px;
     }
 
     .kernel-presets .btn {
-      padding: 4px 8px;
-      font-size: 11.5px;
+      padding: 3px 6px;
+      font-size: clamp(10px, 0.76vw, 11px);
     }
 
     .conv-workspace {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 9px;
     }
 
     .kernel-box {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      padding: 10px;
+      gap: 8px;
+      padding: 7px 8px;
       background-color: var(--bg-subtle);
       border: 1px solid var(--border-stone);
       border-radius: 6px;
@@ -452,21 +603,23 @@
 
     .kernel-grid-3x3 {
       display: grid;
-      grid-template-columns: repeat(3, 44px);
-      gap: 4px;
+      grid-template-columns: repeat(3, clamp(30px, 2.5vw, 38px));
+      gap: 3px;
+      flex-shrink: 0;
     }
 
     .kernel-input {
-      width: 44px;
-      height: 32px;
+      width: clamp(30px, 2.5vw, 38px);
+      height: clamp(24px, 2vw, 28px);
       text-align: center;
       border: 1px solid var(--border-strong);
       border-radius: 4px;
       background-color: #FFFFFF;
       font-family: var(--font-mono);
-      font-size: 12.5px;
+      font-size: clamp(10.5px, 0.82vw, 12px);
       font-weight: 600;
       color: var(--text-main);
+      padding: 0;
     }
 
     .kernel-input.pos {
@@ -484,15 +637,16 @@
     .relu-toggle-box {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
+      min-width: 0;
       flex: 1;
     }
 
     .switch-label {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      font-size: 12.5px;
+      gap: 5px;
+      font-size: clamp(11px, 0.82vw, 12px);
       font-weight: 600;
       cursor: pointer;
       user-select: none;
@@ -500,16 +654,17 @@
 
     .switch-label input[type="checkbox"] {
       accent-color: var(--accent-pine);
-      width: 15px;
-      height: 15px;
+      width: 14px;
+      height: 14px;
       cursor: pointer;
+      flex-shrink: 0;
     }
 
     .fmap-grid-6x6 {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
       width: 100%;
-      max-width: 252px;
+      max-width: clamp(180px, 15.8vw, 236px);
       aspect-ratio: 1 / 1;
       border: 1px solid var(--border-strong);
       border-radius: 4px;
@@ -524,15 +679,22 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: clamp(9px, 0.74vw, 11px);
       font-family: var(--font-mono);
       font-weight: 600;
       cursor: pointer;
-      transition: transform 0.08s;
+      transition: background-color 0.16s ease, opacity 0.16s ease, transform 0.14s ease;
     }
 
     .fmap-cell:nth-child(6n) { border-right: none; }
     .fmap-cell:nth-child(n+31) { border-bottom: none; }
+
+    /* 애니메이션 1→2 순차 점등 대기 셀 */
+    .fmap-cell.anim-pending {
+      opacity: 0.22;
+      background-color: var(--bg-subtle) !important;
+      color: transparent !important;
+    }
 
     .fmap-cell.selected-cell {
       outline: 2px solid var(--accent-pine);
@@ -549,27 +711,29 @@
     .dot-inspector {
       background-color: var(--bg-subtle);
       border: 1px solid var(--border-stone);
-      border-radius: 6px;
-      padding: 8px 10px;
-      font-size: 11.5px;
+      border-radius: 5px;
+      padding: 6px 8px;
+      font-size: clamp(10px, 0.78vw, 11px);
       color: var(--text-sub);
-      min-height: 58px;
+      min-height: 48px;
     }
 
     .dot-inspector-title {
       font-weight: 700;
       color: var(--text-main);
-      margin-bottom: 3px;
+      margin-bottom: 2px;
       display: flex;
       justify-content: space-between;
+      gap: 4px;
+      flex-wrap: wrap;
     }
 
     .dot-formula {
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: clamp(9.5px, 0.74vw, 10.5px);
       word-break: break-all;
       color: var(--text-main);
-      line-height: 1.4;
+      line-height: 1.35;
     }
 
     /* ==========================================================================
@@ -578,20 +742,25 @@
     .pool-mode-group {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 6px;
+      gap: 4px;
+    }
+
+    .pool-mode-group .btn {
+      padding: 4px 5px;
+      font-size: clamp(10.5px, 0.78vw, 11.5px);
     }
 
     .pool-grid-3x3 {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       width: 100%;
-      max-width: 210px;
+      max-width: clamp(150px, 13.5vw, 198px);
       aspect-ratio: 1 / 1;
-      border: 1.5px solid var(--accent-ochre);
+      border: 1px solid var(--accent-ochre);
       border-radius: 6px;
       overflow: hidden;
       background-color: #FFFFFF;
-      margin: 6px auto;
+      margin: 4px auto;
     }
 
     .pool-cell {
@@ -602,12 +771,22 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      padding: 4px;
-      transition: background-color 0.12s;
+      padding: 2px;
+      transition: background-color 0.18s ease, opacity 0.18s ease;
     }
 
     .pool-cell:nth-child(3n) { border-right: none; }
     .pool-cell:nth-child(n+7) { border-bottom: none; }
+
+    /* 애니메이션 2→3 순차 채움 대기 셀 */
+    .pool-cell.anim-pending {
+      opacity: 0.24;
+      background-color: var(--bg-subtle) !important;
+    }
+
+    .pool-cell.anim-pending .pool-val {
+      opacity: 0;
+    }
 
     .pool-cell:hover, .pool-cell.active-pool {
       outline: 2px solid var(--accent-ochre);
@@ -615,25 +794,26 @@
     }
 
     .pool-idx {
-      font-size: 10px;
+      font-size: 9.5px;
       color: var(--text-muted);
       font-family: var(--font-mono);
     }
 
     .pool-val {
-      font-size: 14px;
+      font-size: clamp(12px, 0.95vw, 14px);
       font-weight: 700;
       font-family: var(--font-mono);
+      transition: opacity 0.18s ease;
     }
 
     .pool-note {
-      font-size: 12px;
+      font-size: clamp(10.5px, 0.78vw, 11.5px);
       color: var(--text-sub);
       background-color: var(--accent-ochre-light);
       border: 1px solid #E5D4AD;
-      border-radius: 6px;
-      padding: 8px 10px;
-      line-height: 1.45;
+      border-radius: 5px;
+      padding: 6px 8px;
+      line-height: 1.4;
     }
 
     /* ==========================================================================
@@ -643,67 +823,93 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 12px;
+      padding: 7px 10px;
       background-color: var(--accent-pine-light);
       border: 1px solid var(--accent-pine);
       border-radius: 6px;
+      gap: 6px;
     }
 
     .pred-label {
-      font-size: 12px;
+      font-size: clamp(10.5px, 0.8vw, 11.5px);
       color: var(--accent-pine);
       font-weight: 600;
     }
 
     .pred-digit-big {
-      font-size: 28px;
+      font-size: clamp(19px, 1.7vw, 26px);
       font-weight: 800;
       color: var(--accent-pine);
       line-height: 1;
       font-family: var(--font-mono);
+      white-space: nowrap;
+    }
+
+    .prediction-banner.is-empty .pred-digit-big,
+    .prediction-banner.is-empty .pred-prob-big {
+      color: var(--text-muted);
+    }
+
+    .prediction-banner.is-waiting .pred-digit-big,
+    .prediction-banner.is-waiting .pred-prob-big {
+      color: var(--text-sub);
     }
 
     .pred-prob-big {
-      font-size: 16px;
+      font-size: clamp(12px, 1.0vw, 15px);
       font-weight: 700;
       color: var(--accent-pine);
       font-family: var(--font-mono);
+      white-space: nowrap;
+      margin-left: 6px;
     }
 
     .fc-visual-wrap {
       display: grid;
-      grid-template-columns: 118px 1fr;
-      gap: 6px;
+      grid-template-columns: clamp(78px, 6.8vw, 108px) minmax(0, 1fr);
+      gap: 4px;
       align-items: center;
       border: 1px solid var(--border-stone);
       border-radius: 6px;
-      padding: 8px;
+      padding: 6px;
       background-color: #FFFFFF;
     }
 
     .fc-svg {
-      width: 118px;
-      height: 290px;
+      width: 100%;
+      height: 274px;
       display: block;
+    }
+
+    /* 3→4 시냅스 스트로크 펄스 애니메이션 (4단계 종료 시 정지) */
+    @keyframes fcStrokeFlow {
+      0% { stroke-dashoffset: 18; }
+      100% { stroke-dashoffset: 0; }
+    }
+
+    .fc-line-pulse {
+      stroke-dasharray: 4 3;
+      animation: fcStrokeFlow 0.7s linear infinite;
     }
 
     .prob-list {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
+      min-width: 0;
     }
 
     .prob-row {
       display: grid;
-      grid-template-columns: 22px 1fr 48px 46px;
+      grid-template-columns: 16px minmax(0, 1fr) 34px 38px;
       align-items: center;
-      gap: 6px;
-      padding: 3px 6px;
+      gap: 4px;
+      padding: 2.5px 4px;
       border-radius: 4px;
       border: 1px solid transparent;
       cursor: pointer;
-      font-size: 12px;
-      transition: background-color 0.12s, border-color 0.12s;
+      font-size: clamp(10.5px, 0.78vw, 11.5px);
+      transition: background-color 0.14s, border-color 0.14s;
     }
 
     .prob-row:hover {
@@ -728,7 +934,7 @@
     }
 
     .prob-bar-bg {
-      height: 10px;
+      height: 9px;
       background-color: var(--bg-subtle);
       border-radius: 3px;
       overflow: hidden;
@@ -738,7 +944,7 @@
     .prob-bar-fill {
       height: 100%;
       background-color: #96A8A0;
-      transition: width 0.2s ease;
+      transition: width 0.42s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.25s ease;
     }
 
     .prob-row.top-class .prob-bar-fill {
@@ -747,14 +953,14 @@
 
     .prob-logit {
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: clamp(9.5px, 0.72vw, 10.5px);
       color: var(--text-sub);
       text-align: right;
     }
 
     .prob-pct {
       font-family: var(--font-mono);
-      font-size: 11.5px;
+      font-size: clamp(9.5px, 0.74vw, 11px);
       text-align: right;
       color: var(--text-main);
     }
@@ -762,31 +968,33 @@
     .legend-inline {
       display: flex;
       justify-content: space-between;
-      font-size: 11px;
+      gap: 6px;
+      flex-wrap: wrap;
+      font-size: 10.5px;
       color: var(--text-sub);
       padding: 0 2px;
     }
 
     /* ==========================================================================
-       7. [기능 2] 설명 및 MNIST 비교 보드 (접기/펼치기 + 탭)
+       7. 알고리즘 원리 & MNIST 비교 보드 (접기/펼치기 + 탭)
        ========================================================================== */
     .edu-board {
-      margin-top: 20px;
+      margin-top: 16px;
       background-color: var(--bg-card);
       border: 1px solid var(--border-strong);
-      border-radius: 8px;
+      border-radius: 7px;
       overflow: hidden;
     }
 
     .edu-board-header {
-      padding: 12px 18px;
+      padding: 10px 14px;
       background-color: var(--bg-subtle);
       border-bottom: 1px solid var(--border-stone);
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 8px;
     }
 
     .edu-tabs {
@@ -796,7 +1004,7 @@
     }
 
     .edu-board-body {
-      padding: 18px;
+      padding: 15px;
     }
 
     .edu-board-body.collapsed {
@@ -806,11 +1014,11 @@
     .compare-cards {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 14px;
-      margin-bottom: 18px;
+      gap: 12px;
+      margin-bottom: 14px;
     }
 
-    @media (min-width: 860px) {
+    @media (min-width: 840px) {
       .compare-cards {
         grid-template-columns: 1fr 1fr;
       }
@@ -820,23 +1028,23 @@
       background-color: #FFFFFF;
       border: 1px solid var(--border-stone);
       border-radius: 6px;
-      padding: 14px;
+      padding: 12px;
     }
 
     .formula-card h4 {
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 700;
-      margin-bottom: 6px;
+      margin-bottom: 5px;
       color: var(--text-main);
     }
 
     .math-box {
       background-color: var(--bg-subtle);
       border-left: 3px solid var(--accent-pine);
-      padding: 8px 12px;
-      margin: 8px 0;
+      padding: 7px 10px;
+      margin: 7px 0;
       font-family: var(--font-mono);
-      font-size: 12.5px;
+      font-size: 12px;
       color: var(--text-main);
       border-radius: 0 4px 4px 0;
     }
@@ -852,7 +1060,7 @@
       gap: 6px;
     }
 
-    @media (min-width: 960px) {
+    @media (min-width: 840px) {
       .pipeline-steps-list {
         grid-template-columns: repeat(2, 1fr);
       }
@@ -862,15 +1070,15 @@
       background-color: #FFFFFF;
       border: 1px solid var(--border-stone);
       border-radius: 5px;
-      padding: 8px 12px;
-      font-size: 12.5px;
+      padding: 7px 10px;
+      font-size: 12px;
     }
 
     .step-num-pill {
       display: inline-block;
       background-color: var(--accent-pine);
       color: #FFFFFF;
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 700;
       padding: 1px 6px;
       border-radius: 3px;
@@ -878,7 +1086,6 @@
       font-family: var(--font-mono);
     }
 
-    /* MNIST 비교 테이블 */
     .table-responsive {
       width: 100%;
       overflow-x: auto;
@@ -889,12 +1096,12 @@
       border-collapse: collapse;
       background-color: #FFFFFF;
       border: 1px solid var(--border-strong);
-      font-size: 13px;
+      font-size: 12.5px;
     }
 
     .mnist-table th, .mnist-table td {
       border: 1px solid var(--border-stone);
-      padding: 10px 12px;
+      padding: 8px 10px;
       text-align: left;
       vertical-align: top;
     }
@@ -927,30 +1134,30 @@
       background-color: rgba(251, 249, 245, 0.97);
       backdrop-filter: blur(4px);
       border-top: 1px solid var(--border-strong);
-      padding: 8px 20px;
+      padding: 7px clamp(12px, 1.5vw, 20px);
     }
 
     .bottom-formula-inner {
-      max-width: 1480px;
+      max-width: 1580px;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
     }
 
     .formula-row {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 8px;
-      font-size: 12px;
+      gap: 7px;
+      font-size: 11.5px;
     }
 
     .formula-tag {
       font-weight: 700;
-      padding: 2px 7px;
+      padding: 1.5px 6px;
       border-radius: 4px;
-      font-size: 11px;
+      font-size: 10.5px;
       background-color: var(--accent-pine);
       color: #FFFFFF;
       white-space: nowrap;
@@ -963,7 +1170,7 @@
 
     .formula-expr {
       font-family: var(--font-mono);
-      font-size: 11.5px;
+      font-size: 11px;
       color: var(--text-main);
       overflow-x: auto;
       white-space: nowrap;
@@ -972,12 +1179,28 @@
 
     .pos-txt { color: var(--accent-pine); font-weight: 600; }
     .neg-txt { color: var(--accent-rust); font-weight: 600; }
+
+    /* ==========================================================================
+       모바일 보정 (768px 미만 세로 스택 구간): 상단 바를 가능한 한 한눈에
+       ========================================================================== */
+    @media (max-width: 600px) {
+      .top-bar { padding: 6px 10px; }
+      .top-bar-inner { gap: 6px 8px; }
+      .speed-control { display: none; }
+      .brand-title { font-size: 12.5px; }
+      .accuracy-badge { font-size: 10px; padding: 1px 5px; }
+      .stage-status-pill { font-size: 10px; padding: 1px 6px; }
+      .playback-controls { gap: 4px; }
+      .playback-controls .btn { padding: 4px 7px; font-size: 11px; }
+      .main-wrap { padding-top: 10px; padding-bottom: 160px; }
+      .stage-title { line-height: 1.25; }
+    }
   </style>
 </head>
 <body>
 
   <!-- ========================================================================
-       상단 고정 제어 바: 타이틀, 프리셋 검증 배지, 시연 재생 컨트롤, 진행 단계
+       상단 고정 제어 바: 타이틀, 프리셋 검증 배지, 현재 단계 배지, 재생 컨트롤
        ======================================================================== -->
   <header class="top-bar">
     <div class="top-bar-inner">
@@ -989,15 +1212,18 @@
         <div id="accuracyBadge" class="accuracy-badge tabular" title="0~9 전체 프리셋을 실제 파이프라인에 통과시킨 검증 결과">
           프리셋 정확도 10/10
         </div>
+        <div id="stageStatusBadge" class="stage-status-pill" aria-live="polite">
+          Stage 1 · 8×8 입력 대기 (격자에 직접 그려 보세요)
+        </div>
       </div>
 
       <div class="playback-controls">
-        <button id="btnPlayPause" class="btn btn-primary" type="button" title="1단계부터 4단계까지 자동 순차 시연">▶ 재생</button>
+        <button id="btnPlayPause" class="btn btn-primary" type="button" title="1단계부터 4단계까지 알고리즘 연산 흐름 시연">▶ 연산 흐름 시연</button>
         <button id="btnPrevStep" class="btn" type="button" title="이전 단계로 이동">← 이전</button>
         <button id="btnNextStep" class="btn" type="button" title="다음 단계로 이동">다음 →</button>
-        <button id="btnReset" class="btn" type="button" title="초기 설정 및 숫자 0으로 복원">초기화</button>
+        <button id="btnReset" class="btn" type="button" title="초기 설정 및 빈 캔버스로 복원">초기화</button>
 
-        <label class="speed-control" title="자동 재생 전환 속도 조절">
+        <label class="speed-control" title="알고리즘 시연 속도 조절">
           <span>속도</span>
           <input id="speedSlider" type="range" min="0.5" max="3.0" step="0.5" value="1.0" />
           <span id="speedValue" class="tabular">1.0×</span>
@@ -1009,7 +1235,7 @@
   </header>
 
   <!-- ========================================================================
-       메인 본문: 4단계 CNN 연산 파이프라인 카드 그리드
+       메인 본문: 4단계 CNN 연산 파이프라인 (840px 이상 한 줄 4열 좌→우 + 화살표)
        ======================================================================== -->
   <main class="main-wrap">
     <section class="pipeline-grid" aria-label="CNN 4단계 순전파 파이프라인">
@@ -1020,33 +1246,52 @@
           <div>
             <span class="stage-badge">STAGE 1 · 입력층</span>
             <h2 class="stage-title">8×8 이진 픽셀 입력</h2>
-            <p class="stage-sub">숫자 프리셋 선택 또는 격자 드래그로 직접 그리기</p>
+            <p class="stage-sub">격자 드래그로 직접 그리기 (0 또는 1)</p>
           </div>
-          <span class="dim-tag tabular">8 × 8 = 64</span>
+          <span class="dim-tag tabular">8×8 = 64</span>
         </div>
 
-        <!-- 0~9 숫자 프리셋 버튼 -->
-        <div>
-          <div style="font-size: 11.5px; color: var(--text-sub); margin-bottom: 5px; font-weight: 600;">숫자 프리셋 (0~9)</div>
-          <div id="digitPresetContainer" class="preset-digits"></div>
+        <!-- 초기 안내 문구 -->
+        <div id="canvasGuideBanner" class="canvas-guide-banner">
+          격자에 숫자를 직접 그려 보세요 — 그리는 즉시 좌→우로 연산됩니다
         </div>
 
         <!-- 그리기 / 지우개 / 전체 지우기 / 픽셀 수치 토글 -->
         <div class="tool-row">
-          <button id="btnToolDraw" class="btn btn-active" type="button">✎ 직접 그리기</button>
+          <button id="btnToolDraw" class="btn btn-active" type="button">✎ 그리기</button>
           <button id="btnToolErase" class="btn" type="button">⌫ 지우개</button>
           <button id="btnClearGrid" class="btn" type="button">전체 지우기</button>
-          <button id="btnTogglePixelVal" class="btn" type="button">픽셀 수치: OFF</button>
+          <button id="btnTogglePixelVal" class="btn" type="button">수치: OFF</button>
         </div>
 
         <!-- 8×8 인터랙티브 픽셀 캔버스 -->
         <div class="grid-wrap">
           <div id="inputGrid8x8" class="pixel-grid-8x8" role="grid" aria-label="8×8 입력 픽셀 그리드"></div>
-          <div style="font-size: 11.5px; color: var(--text-muted); text-align: center;">
-            검정 칸 = 1 (활성), 흰 칸 = 0 (배경) · 마우스/터치 드래그 지원
+          <div style="font-size: 10.5px; color: var(--text-muted); text-align: center;">
+            검정 = 1 (활성), 흰색 = 0 (배경) · 터치/마우스 드래그
+          </div>
+        </div>
+
+        <!-- 캔버스 아래쪽에 후행 배치된 대표 숫자 예시(0~9) 토글 패널 -->
+        <div class="preset-drawer">
+          <button id="btnTogglePresets" class="btn preset-toggle-btn" type="button" aria-expanded="false">
+            <span>대표 숫자 예시 불러오기 (분류 최적화 패턴)</span>
+            <span id="presetToggleChevron">▼</span>
+          </button>
+          <div id="presetPanel" class="preset-panel">
+            <div style="font-size: 10.5px; color: var(--text-sub);">
+              버튼을 누르면 해당 숫자의 8×8 기준 패턴이 캔버스에 로드됩니다.
+            </div>
+            <div id="digitPresetContainer" class="preset-digits"></div>
           </div>
         </div>
       </article>
+
+      <!-- 1 → 2 흐름 화살표 -->
+      <div id="flowArrow12" class="flow-arrow" aria-hidden="true">
+        <span class="arrow-h">→</span>
+        <span class="arrow-v">↓</span>
+      </div>
 
       <!-- [2단계] 3×3 커널 합성곱 & ReLU → 6×6 특징 맵 -->
       <article id="stageCard2" class="stage-card">
@@ -1054,19 +1299,17 @@
           <div>
             <span class="stage-badge">STAGE 2 · 합성곱 &amp; ReLU</span>
             <h2 class="stage-title">3×3 커널 필터 &amp; 특징 맵</h2>
-            <p class="stage-sub">Stride 1 내적 연산 후 비선형 활성화 max(0, x)</p>
+            <p class="stage-sub">Stride 1 내적 후 비선형 활성화 max(0, x)</p>
           </div>
-          <span class="dim-tag tabular">6 × 6 = 36</span>
+          <span class="dim-tag tabular">6×6 = 36</span>
         </div>
 
         <!-- 커널 프리셋 5종 -->
         <div>
-          <div style="font-size: 11.5px; color: var(--text-sub); margin-bottom: 5px; font-weight: 600;">3×3 커널 프리셋 (5종)</div>
+          <div style="font-size: 11px; color: var(--text-sub); margin-bottom: 4px; font-weight: 600;">3×3 커널 프리셋 (5종)</div>
           <div id="kernelPresetContainer" class="kernel-presets"></div>
-          <p id="kernelNote" style="font-size: 11px; color: var(--text-sub); line-height: 1.5; margin-top: 6px;">
-            ※ 9×10 분류 가중치는 기본 커널(<strong>윤곽선 강조</strong>)에 맞춰 설계되어, 커널을 다른 엣지 필터로 바꾸면 특징 맵이 달라져
-            정확도가 떨어집니다(수직·수평 엣지만으로는 세로획·가로획이 같은 숫자들을 구분할 수 없습니다).
-            실제 CNN은 필터와 분류기를 <strong>역전파로 함께 학습</strong>합니다 — 아래 비교표의 ‘학습 방식’ 행을 참고하세요.
+          <p id="kernelNote" style="font-size: 10.5px; color: var(--text-sub); line-height: 1.4; margin-top: 5px;">
+            ※ 9×10 분류 가중치는 기본 커널(<strong>윤곽선 강조</strong>) 기준으로 설계되었습니다. 커널을 다른 엣지 필터로 바꾸면 특징 맵이 달라져 정확도가 떨어집니다. 실제 CNN은 필터와 분류기를 <strong>역전파로 함께 학습</strong>합니다(아래 비교표 ‘학습 방식’ 행).
           </p>
         </div>
 
@@ -1077,19 +1320,19 @@
             <div class="relu-toggle-box">
               <label class="switch-label">
                 <input id="chkRelu" type="checkbox" checked />
-                <span>ReLU 활성화 <span class="tabular">max(0, x)</span></span>
+                <span>ReLU <span class="tabular">max(0,x)</span></span>
               </label>
-              <span style="font-size: 11px; color: var(--text-sub); line-height: 1.35;">
-                음수 응답을 0으로 억제하여 윤곽 특징만 다음 층으로 전달합니다.
+              <span style="font-size: 10px; color: var(--text-sub); line-height: 1.3;">
+                음수 응답을 0으로 억제해 윤곽 특징을 추출합니다.
               </span>
             </div>
           </div>
 
           <!-- 6×6 특징 맵 출력 -->
           <div>
-            <div style="display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-sub); margin-bottom: 5px;">
-              <span style="font-weight: 600;">특징 맵 6×6 (셀 호버/클릭 시 수용 영역 표시)</span>
-              <span class="tabular" style="color: var(--accent-pine);">송록: 양(+) / 적갈: 음(-)</span>
+            <div style="display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-sub); margin-bottom: 4px;">
+              <span style="font-weight: 600;">특징 맵 6×6 (셀 호버/클릭)</span>
+              <span class="tabular" style="color: var(--accent-pine);">송록:+ / 적갈:-</span>
             </div>
             <div id="featureMap6x6" class="fmap-grid-6x6" role="grid" aria-label="6×6 특징 맵"></div>
           </div>
@@ -1097,91 +1340,103 @@
           <!-- 내적 연산 실시간 검사기 -->
           <div class="dot-inspector">
             <div class="dot-inspector-title">
-              <span id="dotCellCoord">선택 위치: (행 0, 열 0) → 3×3 수용 영역</span>
-              <span id="dotCellResult" class="tabular" style="color: var(--accent-pine);">합계 = 0.0</span>
+              <span id="dotCellCoord">선택: (행 1, 열 1) → 3×3 수용 영역</span>
+              <span id="dotCellResult" class="tabular" style="color: var(--accent-pine);">합계 = 0</span>
             </div>
             <div id="dotFormulaText" class="dot-formula">
-              특징 맵의 칸에 마우스를 올리면 9개 원소의 내적 수식이 표시됩니다.
+              특징 맵 칸에 마우스를 올리면 9개 원소의 내적 수식이 표시됩니다.
             </div>
           </div>
         </div>
       </article>
+
+      <!-- 2 → 3 흐름 화살표 -->
+      <div id="flowArrow23" class="flow-arrow" aria-hidden="true">
+        <span class="arrow-h">→</span>
+        <span class="arrow-v">↓</span>
+      </div>
 
       <!-- [3단계] 풀링 3×3 (2×2 윈도우, Stride 2) -->
       <article id="stageCard3" class="stage-card">
         <div class="stage-header">
           <div>
-            <span class="stage-badge">STAGE 3 · 풀링 (공간 압축)</span>
-            <h2 class="stage-title">3×3 풀링 특징 추출</h2>
-            <p class="stage-sub">2×2 윈도우(Stride 2)로 36칸을 9개 핵심 특징으로 요약</p>
+            <span class="stage-badge">STAGE 3 · 풀링</span>
+            <h2 class="stage-title">3×3 공간 압축</h2>
+            <p class="stage-sub">2×2 창(Stride 2)으로 36→9 요약</p>
           </div>
-          <span class="dim-tag tabular">3 × 3 = 9</span>
+          <span class="dim-tag tabular">3×3 = 9</span>
         </div>
 
         <!-- Max / Avg 풀링 전환 -->
         <div class="pool-mode-group">
-          <button id="btnPoolMax" class="btn btn-ochre-active" type="button">최대 풀링 (Max)</button>
-          <button id="btnPoolAvg" class="btn" type="button">평균 풀링 (Avg)</button>
+          <button id="btnPoolMax" class="btn btn-ochre-active" type="button">최대 (Max)</button>
+          <button id="btnPoolAvg" class="btn" type="button">평균 (Avg)</button>
         </div>
 
         <!-- 3×3 풀링 결과 그리드 (f1 ~ f9) -->
         <div>
-          <div style="font-size: 11.5px; color: var(--text-sub); margin-bottom: 4px; text-align: center; font-weight: 600;">
-            추출된 9개 특징 벡터 <span class="tabular">(f₁ ~ f₉)</span>
+          <div style="font-size: 10.5px; color: var(--text-sub); margin-bottom: 4px; text-align: center; font-weight: 600;">
+            9개 특징 벡터 <span class="tabular">(f₁ ~ f₉)</span>
           </div>
           <div id="poolGrid3x3" class="pool-grid-3x3" role="grid" aria-label="3×3 풀링 맵"></div>
         </div>
 
         <div id="poolInspector" class="pool-note">
-          <strong>풀링 연산 안내:</strong> 6×6 특징 맵을 겹치지 않는 2×2 구역 9개로 나누어 대표값을 뽑습니다. 칸에 마우스를 올리면 2단계의 해당 2×2 영역이 황토색으로 표시됩니다.
+          <strong>풀링 안내:</strong> 6×6 특징 맵의 2×2 구역 9개에서 대표값을 뽑습니다. 칸에 마우스를 올리면 2단계의 2×2 창이 표시됩니다.
         </div>
       </article>
+
+      <!-- 3 → 4 흐름 화살표 -->
+      <div id="flowArrow34" class="flow-arrow" aria-hidden="true">
+        <span class="arrow-h">→</span>
+        <span class="arrow-v">↓</span>
+      </div>
 
       <!-- [4단계] 직렬화 & 완전연결 & 소프트맥스 -->
       <article id="stageCard4" class="stage-card">
         <div class="stage-header">
           <div>
-            <span class="stage-badge">STAGE 4 · 분류기 &amp; 확률</span>
+            <span class="stage-badge">STAGE 4 · 분류 &amp; 확률</span>
             <h2 class="stage-title">완전연결(FC) &amp; 소프트맥스</h2>
-            <p class="stage-sub">9개 특징(f₁~f₉)과 9×10 가중치 행렬 내적으로 0~9 확률 산출</p>
+            <p class="stage-sub">zₖ = Σ(fᵢ·wᵢₖ) + bₖ 후 0~9 확률 산출</p>
           </div>
           <span class="dim-tag tabular">9 → 10</span>
         </div>
 
         <!-- 최종 판별 결과 배너 -->
-        <div class="prediction-banner">
+        <div class="prediction-banner is-empty">
           <div>
-            <div class="pred-label">최종 판별 숫자 (argmax)</div>
-            <div style="font-size: 11.5px; color: var(--text-sub);">행 클릭 시 하단 바에서 수식 확인</div>
+            <div class="pred-label">최종 판별 (argmax)</div>
+            <div style="font-size: 10.5px; color: var(--text-sub);">행 클릭 시 하단 수식 고정</div>
           </div>
-          <div style="display: flex; align-items: baseline; gap: 10px;">
-            <span id="predDigitDisplay" class="pred-digit-big">0</span>
-            <span id="predProbDisplay" class="pred-prob-big">99.9%</span>
+          <div style="display: flex; align-items: baseline; gap: 8px; min-width: 0;">
+            <span id="predDigitDisplay" class="pred-digit-big">—</span>
+            <span id="predProbDisplay" class="pred-prob-big">—</span>
           </div>
         </div>
 
         <!-- SVG 9→10 시냅스 연결선 + 0~9 로짓/확률 막대 -->
         <div class="fc-visual-wrap">
-          <svg id="fcSvg" class="fc-svg" viewBox="0 0 118 290" aria-label="완전연결층 9대10 가중치 연결선"></svg>
+          <svg id="fcSvg" class="fc-svg" viewBox="0 0 112 274" aria-label="완전연결층 9대10 가중치 연결선"></svg>
           <div id="probList" class="prob-list"></div>
         </div>
 
         <div class="legend-inline">
-          <span><span class="pos-txt">━ 송록선</span>: 양의 가중치 (+)</span>
-          <span><span class="neg-txt">━ 적갈선</span>: 음의 가중치 (-)</span>
+          <span><span class="pos-txt">━ 송록선</span>: 양수(+)</span>
+          <span><span class="neg-txt">━ 적갈선</span>: 음수(-)</span>
         </div>
       </article>
 
     </section>
 
     <!-- ======================================================================
-         [기능 2] 알고리즘 원리 & MNIST 비교 보드 (접기/펼치기 + 탭)
+         알고리즘 원리 & MNIST 비교 보드 (접기/펼치기 + 탭)
          ====================================================================== -->
     <section class="edu-board" aria-label="CNN 알고리즘 원리 및 MNIST 비교 해설">
       <div class="edu-board-header">
         <div class="edu-tabs">
           <button id="tabAlgo" class="btn btn-active" type="button">① 이진 vs 다중 분류 &amp; 파이프라인 원리</button>
-          <button id="tabMnist" class="btn" type="button">② 교육용 8×8 CNN vs 표준 MNIST 비교표</button>
+          <button id="tabMnist" class="btn" type="button">② 교육용 8×8 CNN vs 표준 MNIST(28×28) 비교표</button>
         </div>
         <button id="btnToggleEduBoard" class="btn" type="button" aria-expanded="true">접기 ▲</button>
       </div>
@@ -1192,32 +1447,32 @@
           <div class="compare-cards">
             <div class="formula-card">
               <h4>A. 이진 분류 (0 vs 1) — 시그모이드(Sigmoid)</h4>
-              <p style="font-size: 12.5px; color: var(--text-sub);">
-                출력 노드가 <strong>단 1개</strong>이며, 로짓 <code>z</code>를 0~1 사이 확률로 압축해 임계값(보통 0.5) 기준으로 두 클래스 중 하나를 판별합니다.
+              <p style="font-size: 12px; color: var(--text-sub);">
+                출력 노드가 <strong>단 1개</strong>이며, 로짓 <code>z</code>를 0~1 사이 확률로 압축해 임계값(0.5) 기준으로 두 클래스 중 하나를 판별합니다.
               </p>
               <div class="math-box">
                 P(y = 1 | x) = σ(z) = 1 / (1 + e⁻ᶻ), &nbsp; P(y = 0 | x) = 1 - σ(z)
               </div>
-              <p style="font-size: 12px; color: var(--text-sub);">
+              <p style="font-size: 11.5px; color: var(--text-sub);">
                 · 판정 규칙: <code>σ(z) ≥ 0.5</code> 이면 <strong>1</strong>, 미만이면 <strong>0</strong>
               </p>
             </div>
 
             <div class="formula-card">
               <h4>B. 다중 분류 (0 ~ 9) — 소프트맥스(Softmax)</h4>
-              <p style="font-size: 12.5px; color: var(--text-sub);">
+              <p style="font-size: 12px; color: var(--text-sub);">
                 클래스 수만큼 <strong>10개의 출력 노드(z₀~z₉)</strong>를 두고, 지수함수 정규화를 거쳐 10개 확률의 총합이 정확히 <strong>1.0 (100%)</strong>이 되도록 만듭니다.
               </p>
               <div class="math-box ochre">
                 P(y = k | x) = exp(zₖ) / Σⱼ₌₀⁹ exp(zⱼ), &nbsp; Σₖ₌₀⁹ P(y = k) = 1
               </div>
-              <p style="font-size: 12px; color: var(--text-sub);">
+              <p style="font-size: 11.5px; color: var(--text-sub);">
                 · 판정 규칙: 확률이 가장 큰 인덱스 <code>argmaxₖ P(y = k)</code> 선택
               </p>
             </div>
           </div>
 
-          <h4 style="font-size: 13.5px; font-weight: 700; margin-bottom: 8px;">C. 전체 CNN 순전파 파이프라인 6단계 한 줄 요약</h4>
+          <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">C. 전체 CNN 순전파 파이프라인 6단계 요약</h4>
           <ul class="pipeline-steps-list">
             <li><span class="step-num-pill">1</span><strong>입력(Input):</strong> 8×8 격자(64픽셀)의 흑백 명암을 0과 1의 수치 행렬로 표현합니다.</li>
             <li><span class="step-num-pill">2</span><strong>합성곱(Conv):</strong> 3×3 커널을 한 칸씩(Stride 1) 옮기며 국소 영역과 내적해 6×6 엣지 맵을 만듭니다.</li>
@@ -1230,13 +1485,11 @@
 
         <!-- 탭 2: 표준 MNIST 비교표 -->
         <div id="panelMnist" style="display: none;">
-          <p style="font-size: 12.5px; color: var(--text-sub); margin-bottom: 10px;">
-            본 시뮬레이터는 <strong>"MNIST와 별개로 연산 원리를 한눈에 추적하기 위해 설계된 교육용 축소 모델"</strong>입니다. 표준 MNIST 실전 CNN과의 구조적 차이는 다음과 같습니다.
+          <p style="font-size: 12px; color: var(--text-sub); margin-bottom: 8px;">
+            본 시뮬레이터는 <strong>"MNIST와 별개로 연산 원리를 한눈에 추적하기 위해 설계된 교육용 축소 모델"</strong>입니다. 표준 MNIST(28×28) 실전 CNN과의 구조적 차이는 다음과 같습니다.
           </p>
-          <p style="font-size: 12.5px; color: var(--text-sub); margin-bottom: 10px;">
-            같은 이유로, 1단계에서 <strong>프리셋과 모양이 다른 숫자를 직접 그리면 오분류될 수 있습니다</strong>.
-            가중치가 10개 예시에서 수동으로 설계되었기 때문입니다(학습이 아니라 고정 설계).
-            표준 MNIST CNN이 <strong>60,000장의 필체 변형</strong>을 학습하는 까닭이 바로 이 일반화입니다.
+          <p style="font-size: 12px; color: var(--text-sub); margin-bottom: 10px;">
+            1단계에서 <strong>프리셋과 모양이 다른 숫자를 직접 그리면 오분류될 수 있습니다</strong>. 가중치가 10개 예시 기준으로 수동/수학적으로 설계되었기 때문이며, 표준 MNIST CNN은 <strong>60,000장의 필체 변형</strong>을 학습하여 일반화 성능을 확보합니다.
           </p>
           <div class="table-responsive">
             <table class="mnist-table">
@@ -1275,7 +1528,7 @@
                 </tr>
                 <tr>
                   <td><strong>정확도</strong></td>
-                  <td>기준 프리셋 10종 <strong>10/10 (100%)</strong> 분류 검증</td>
+                  <td>기준 프리셋 10종 <strong>10/10 (100%)</strong> 분류 검증 (Max / Avg 모두)</td>
                   <td>테스트 10,000장 기준 약 <strong>99.0% ~ 99.7%</strong> 일반화 성능</td>
                 </tr>
                 <tr>
@@ -1308,7 +1561,7 @@
   </footer>
 
   <!-- ========================================================================
-       JavaScript: 8×8 CNN 순전파 엔진, 가중치 행렬, UI 바인딩 및 자체 검증
+       JavaScript: 8×8 CNN 순전파 엔진, 가중치 행렬, 부드러운 애니메이션 및 UI
        ======================================================================== -->
   <script>
     (function () {
@@ -1316,9 +1569,6 @@
 
       /* ======================================================================
          1. 0~9 숫자 프리셋 데이터 (8×8 이진 행렬)
-         - 각 패턴은 8×8 격자에서 실제 해당 숫자로 명확히 읽히도록 설계되었으며,
-           기본 커널(윤곽선 강조) → ReLU → Max Pooling(3×3) 통과 시 서로 고유한
-           9차원 특징 벡터를 형성합니다.
          ====================================================================== */
       const DIGIT_PRESETS = {
         0: [
@@ -1425,7 +1675,6 @@
 
       /* ======================================================================
          2. 3×3 합성곱 커널 프리셋 5종
-         - 기본값("outline"): 라플라시안 기반 윤곽선 강조 커널 [0,-1,0, -1,4,-1, 0,-1,0]
          ====================================================================== */
       const KERNEL_PRESETS = [
         { id: "outline", name: "윤곽선 강조", weights: [0, -1, 0, -1, 4, -1, 0, -1, 0] },
@@ -1438,10 +1687,6 @@
       /* ======================================================================
          3. 순수 연산 함수 (합성곱 → ReLU → 풀링)
          ====================================================================== */
-      /**
-       * 8×8 입력과 3×3 커널의 유효(Valid) 합성곱 (Stride = 1) → 6×6 특징 맵 반환
-       * 수식: S[r][c] = Σ_{u=0..2} Σ_{v=0..2} X[r+u][c+v] · K[u][v]
-       */
       function computeConv6x6(input8x8, kernel3x3, useRelu) {
         const rawMap = new Array(36);
         const actMap = new Array(36);
@@ -1463,9 +1708,6 @@
         return { rawMap, actMap };
       }
 
-      /**
-       * 6×6 특징 맵에 2×2 풀링(Stride = 2) 적용 → 3×3 (9차원 특징 벡터 f1~f9)
-       */
       function computePool3x3(actMap6x6, mode) {
         const pooled = new Array(9);
         for (let pr = 0; pr < 3; pr++) {
@@ -1490,20 +1732,9 @@
 
       /* ======================================================================
          4. 완전연결(FC) 9×10 가중치 행렬 W 및 편향(Bias) b
-         - 수학적 일관성: 기본 커널('윤곽선 강조') + ReLU 에서 0~9 프리셋이 만드는
-           9차원 특징 벡터 μ_0~μ_9 에 대해, 모든 프리셋 k가 자기 클래스에서 1순위가
-           되도록 하는 제약(z_k(μ_k) - z_j(μ_k) ≥ margin, j≠k)을 퍼셉트론형 마진
-           최대화로 풀어 W, b를 구했습니다(오프라인 계산 후 상수로 고정).
-           이어서 소프트맥스 확률이 강의 시연에 충분히 또렷하도록 해 전체를 양수배
-           (약 11.7배)한 뒤 소수점 2자리로 반올림했습니다. 로짓의 순서는 양수배에
-           영향받지 않으므로 분류 결과는 그대로 유지됩니다.
-           검증: 기본 설정(Max 풀링) 0~9 전 프리셋 10/10, Avg 풀링에서도 10/10
-                 (최저 1순위 확률 84.0%).
-           어떤 if문 분기나 확률 하드코딩 없이 z_k = Σ(f_i · w_ik) + b_k 행렬곱만으로
-           분류가 이루어집니다.
+         - Max 풀링 10/10, Avg 풀링 10/10 정답 검증 완료 순수 선형 결합 행렬
          ====================================================================== */
       const FC_PARAMS = {
-        // W[i][k]: i번째 풀링 특징(f_i, 0..8) → k번째 출력 클래스(0~9) 로짓 가중치
         W: [
           [3.25, 3.23, -0.80, 5.21, 1.12, 2.09, 2.38, -0.54, -14.97, -1.14],
           [-1.94, 1.21, -2.31, -3.88, 3.31, 5.00, -1.20, 2.86, -1.31, -1.78],
@@ -1515,15 +1746,9 @@
           [-0.52, 1.82, -2.20, -2.32, 0.63, -0.40, -0.51, 2.02, -5.74, 7.45],
           [2.38, -1.07, -6.12, 2.86, -1.22, 1.70, 2.30, -2.84, -0.79, 2.83]
         ],
-        // b[k]: k번째 클래스 편향
         b: [1.15, 1.05, 0.52, -4.60, -0.08, -0.15, 1.56, 1.14, -1.28, 0.69]
       };
 
-      /**
-       * 완전연결(FC) + 소프트맥스(Softmax) 순전파
-       * z_k = Σ_{i=0..8} (f_i · W[i][k]) + b[k]
-       * P(y = k) = exp(z_k - maxZ) / Σ_{j=0..9} exp(z_j - maxZ)  (수치 안정화 적용)
-       */
       function computeSoftmaxClassifier(features9) {
         const logits = new Array(10).fill(0);
         for (let k = 0; k < 10; k++) {
@@ -1547,9 +1772,6 @@
         return { logits, exps, sumExp, maxZ, probs, topClass };
       }
 
-      /**
-       * 단일 8×8 입력에 대한 전체 CNN 파이프라인 실행
-       */
       function forwardPass(input8x8, kernel3x3, useRelu, poolMode) {
         const conv = computeConv6x6(input8x8, kernel3x3, useRelu);
         const pool = computePool3x3(conv.actMap, poolMode);
@@ -1568,30 +1790,42 @@
       }
 
       /* ======================================================================
-         5. 애플리케이션 상태 관리
+         5. 애플리케이션 상태 (초기 빈 8×8 캔버스 + 시연 애니메이션 상태)
          ====================================================================== */
+      const STAGE_DESCRIPTIONS = {
+        1: "Stage 1 · 8×8 이진 입력 행렬 준비",
+        2: "Stage 2 · 3×3 커널 슬라이딩 합성곱 → 6×6 특징 맵 생성",
+        3: "Stage 3 · 2×2 풀링 창 이동 → 3×3 핵심 특징(f₁~f₉) 압축",
+        4: "Stage 4 · 완전연결(FC) 시냅스 전달 & Softmax 확률 산출 완료"
+      };
+
       const state = {
-        activePresetDigit: 0,
-        grid8x8: [...DIGIT_PRESETS[0]],
-        drawTool: "draw", // "draw" | "erase"
+        activePresetDigit: null,
+        grid8x8: new Array(64).fill(0), // 초기 빈 8×8 캔버스
+        drawTool: "draw",
         isPointerDown: false,
         showPixelValues: false,
+        isPresetDrawerOpen: false,
 
         activeKernelId: "outline",
         kernel3x3: [...KERNEL_PRESETS[0].weights],
         useRelu: true,
 
-        poolMode: "max", // "max" | "avg"
+        poolMode: "max",
 
-        selectedConvCell: 0, // 0..35 (2단계 수용 영역 및 내적 검사)
-        hoveredPoolCell: null, // 0..8 (3단계 풀링 윈도우 하이라이트)
-        selectedClassForFormula: 0, // 0..9 (4단계 및 하단 수식 바 선택 클래스)
+        selectedConvCell: 0,
+        hoveredPoolCell: null,
+        selectedClassForFormula: 0,
         userPinnedClass: false,
 
-        currentStep: 1, // 1..4
+        currentStep: 1,
         isPlaying: false,
         speed: 1.0,
-        playTimerId: null,
+        rafId: null,
+        animPhase: "idle", // "idle" | "conv" | "pool" | "fc"
+        convRevealedCount: 36, // 0..36 (애니메이션 중 순차 점등)
+        poolRevealedCount: 9,  // 0..9  (애니메이션 중 순차 채움)
+        fcPulseActive: false,
 
         lastOutput: null
       };
@@ -1629,33 +1863,29 @@
 
         const badge = document.getElementById("accuracyBadge");
         badge.textContent = `프리셋 정확도 ${correctCount}/10`;
-        if (correctCount === 10) {
-          badge.classList.remove("warn");
-        } else {
-          badge.classList.add("warn");
-        }
+        badge.classList.toggle("warn", correctCount !== 10);
 
         return { correctCount, rows };
       }
 
       /* ======================================================================
-         7. UI 렌더링 및 상호작용 바인딩
+         7. UI 요소 초기화
          ====================================================================== */
       function formatNum(n) {
         return Number.isInteger(n) ? String(n) : n.toFixed(1);
       }
 
-      // 1단계: 숫자 프리셋 버튼 초기화
       function initDigitPresetButtons() {
         const container = document.getElementById("digitPresetContainer");
         container.innerHTML = "";
         for (let d = 0; d <= 9; d++) {
           const btn = document.createElement("button");
           btn.type = "button";
-          btn.className = "digit-btn tabular" + (d === state.activePresetDigit ? " active" : "");
+          btn.className = "digit-btn tabular";
           btn.textContent = String(d);
           btn.dataset.digit = String(d);
           btn.addEventListener("click", () => {
+            stopPlayback(true);
             state.activePresetDigit = d;
             state.grid8x8 = [...DIGIT_PRESETS[d]];
             state.userPinnedClass = false;
@@ -1665,7 +1895,6 @@
         }
       }
 
-      // 1단계: 8×8 픽셀 그리드 생성 및 마우스/터치 드래그 이벤트 연결
       function initInputGrid8x8() {
         const gridEl = document.getElementById("inputGrid8x8");
         gridEl.innerHTML = "";
@@ -1677,12 +1906,22 @@
           gridEl.appendChild(cell);
         }
 
+        // 1→2 슬라이딩 커널 창 오버레이 (48px 셀 단위 점멸 위에 부드럽게 이동)
+        if (!document.getElementById("receptiveSlider")) {
+          const slider = document.createElement("div");
+          slider.id = "receptiveSlider";
+          slider.className = "receptive-slider";
+          slider.setAttribute("aria-hidden", "true");
+          gridEl.appendChild(slider);
+        }
+
         const applyPaint = (idx) => {
           if (idx < 0 || idx >= 64) return;
           const targetVal = state.drawTool === "draw" ? 1 : 0;
           if (state.grid8x8[idx] !== targetVal) {
+            if (state.isPlaying) stopPlayback(true);
             state.grid8x8[idx] = targetVal;
-            state.activePresetDigit = null; // 사용자 직접 수정 상태
+            state.activePresetDigit = null;
             state.userPinnedClass = false;
             updateAll();
           }
@@ -1713,7 +1952,6 @@
         gridEl.addEventListener("pointercancel", stopPointer);
       }
 
-      // 2단계: 3×3 커널 프리셋 버튼 및 9칸 입력칸 생성
       function initKernelControls() {
         const presetWrap = document.getElementById("kernelPresetContainer");
         presetWrap.innerHTML = "";
@@ -1724,6 +1962,7 @@
           btn.textContent = kp.name;
           btn.dataset.kid = kp.id;
           btn.addEventListener("click", () => {
+            stopPlayback(true);
             state.activeKernelId = kp.id;
             state.kernel3x3 = [...kp.weights];
             syncKernelInputsFromState();
@@ -1742,6 +1981,7 @@
           inp.value = String(state.kernel3x3[i]);
           inp.setAttribute("aria-label", `커널 가중치 ${i + 1}`);
           inp.addEventListener("input", () => {
+            stopPlayback(true);
             const parsed = parseFloat(inp.value);
             state.kernel3x3[i] = Number.isFinite(parsed) ? parsed : 0;
             state.activeKernelId = "custom";
@@ -1758,7 +1998,6 @@
         });
       }
 
-      // 2단계: 6×6 특징 맵 그리드 초기화
       function initFeatureMap6x6() {
         const fmapEl = document.getElementById("featureMap6x6");
         fmapEl.innerHTML = "";
@@ -1767,6 +2006,7 @@
           cell.className = "fmap-cell";
           cell.dataset.idx = String(idx);
           const selectCell = () => {
+            if (state.isPlaying) return;
             state.selectedConvCell = idx;
             renderStage1And2();
           };
@@ -1776,7 +2016,6 @@
         }
       }
 
-      // 3단계: 3×3 풀링 그리드 초기화
       function initPoolGrid3x3() {
         const poolEl = document.getElementById("poolGrid3x3");
         poolEl.innerHTML = "";
@@ -1784,17 +2023,20 @@
           const cell = document.createElement("div");
           cell.className = "pool-cell";
           cell.dataset.idx = String(idx);
-          cell.innerHTML = `<span class="pool-idx">f${idx + 1}</span><span class="pool-val">0.0</span>`;
+          cell.innerHTML = `<span class="pool-idx">f${idx + 1}</span><span class="pool-val">0</span>`;
 
           cell.addEventListener("mouseenter", () => {
+            if (state.isPlaying) return;
             state.hoveredPoolCell = idx;
             renderStage2And3();
           });
           cell.addEventListener("mouseleave", () => {
+            if (state.isPlaying) return;
             state.hoveredPoolCell = null;
             renderStage2And3();
           });
           cell.addEventListener("click", () => {
+            if (state.isPlaying) return;
             state.hoveredPoolCell = state.hoveredPoolCell === idx ? null : idx;
             renderStage2And3();
           });
@@ -1803,9 +2045,22 @@
       }
 
       /* ======================================================================
-         8. 단계별 화면 갱신 렌더러
+         8. 단계별 렌더링 및 하단 수식 바 갱신
          ====================================================================== */
       function renderStage1And2() {
+        const hasAnyInk = state.grid8x8.some((v) => v === 1);
+        const guideEl = document.getElementById("canvasGuideBanner");
+        if (!hasAnyInk) {
+          guideEl.textContent = "격자에 숫자를 직접 그려 보세요 — 그리는 즉시 좌→우로 연산됩니다";
+          guideEl.classList.remove("is-drawn");
+        } else if (state.activePresetDigit !== null) {
+          guideEl.textContent = `대표 숫자 예시 '${state.activePresetDigit}' 로드됨 · 격자를 클릭해 수정 가능`;
+          guideEl.classList.add("is-drawn");
+        } else {
+          guideEl.textContent = "사용자 손글씨 입력 중 · 실시간 합성곱 → 풀링 → 분류 반영됨";
+          guideEl.classList.add("is-drawn");
+        }
+
         // 숫자 프리셋 활성 표시
         document.querySelectorAll("#digitPresetContainer .digit-btn").forEach((btn) => {
           const d = Number(btn.dataset.digit);
@@ -1816,10 +2071,10 @@
         document.getElementById("btnToolDraw").classList.toggle("btn-active", state.drawTool === "draw");
         document.getElementById("btnToolErase").classList.toggle("btn-active", state.drawTool === "erase");
         const pxToggleBtn = document.getElementById("btnTogglePixelVal");
-        pxToggleBtn.textContent = `픽셀 수치: ${state.showPixelValues ? "ON" : "OFF"}`;
+        pxToggleBtn.textContent = `수치: ${state.showPixelValues ? "ON" : "OFF"}`;
         pxToggleBtn.classList.toggle("btn-active", state.showPixelValues);
 
-        // 커널 프리셋 버튼 및 입력칸 색상 스타일링
+        // 커널 프리셋 및 입력칸 스타일
         document.querySelectorAll("#kernelPresetContainer .btn").forEach((btn) => {
           btn.classList.toggle("btn-active", btn.dataset.kid === state.activeKernelId);
         });
@@ -1829,7 +2084,7 @@
           inp.classList.toggle("neg", v < 0);
         });
 
-        // 선택된 6×6 특징 맵 셀의 8×8 내 3×3 수용 영역 좌표 계산
+        // 3×3 수용 영역 좌표
         const selR = Math.floor(state.selectedConvCell / 6);
         const selC = state.selectedConvCell % 6;
 
@@ -1839,11 +2094,28 @@
           const r = Math.floor(idx / 8);
           const c = idx % 8;
           const val = state.grid8x8[idx];
-          const inReceptive = r >= selR && r < selR + 3 && c >= selC && c < selC + 3;
+          const scanGliding = state.isPlaying && state.animPhase === "conv";
+          const inReceptive = hasAnyInk && !scanGliding && r >= selR && r < selR + 3 && c >= selC && c < selC + 3;
 
           cell.className = "px-cell " + (val === 1 ? "on" : "off") + (inReceptive ? " receptive-highlight" : "");
           cell.textContent = state.showPixelValues ? String(val) : "";
         });
+
+        // 1→2 슬라이딩 커널 창 오버레이: 셀 하이라이트와 함께 부드럽게 이동
+        const sliderEl = document.getElementById("receptiveSlider");
+        if (sliderEl) {
+          const gridEl = document.getElementById("inputGrid8x8");
+          const anchor = gridEl.children[selR * 8 + selC];
+          if (anchor && hasAnyInk) {
+            sliderEl.style.left = `${anchor.offsetLeft}px`;
+            sliderEl.style.top = `${anchor.offsetTop}px`;
+            sliderEl.style.width = `${anchor.offsetWidth * 3}px`;
+            sliderEl.style.height = `${anchor.offsetHeight * 3}px`;
+            sliderEl.classList.add("is-visible");
+          } else {
+            sliderEl.classList.remove("is-visible");
+          }
+        }
 
         // 6×6 특징 맵 렌더링
         const out = state.lastOutput;
@@ -1852,7 +2124,6 @@
         const maxAbs = Math.max(1, ...out.actMap.map((v) => Math.abs(v)));
         const fmapCells = document.querySelectorAll("#featureMap6x6 .fmap-cell");
 
-        // 3단계 풀링 셀 호버 시 대응 2×2 영역 좌표
         let poolR0 = -1, poolC0 = -1;
         if (state.hoveredPoolCell !== null) {
           poolR0 = Math.floor(state.hoveredPoolCell / 3) * 2;
@@ -1864,6 +2135,7 @@
           const c = idx % 6;
           const val = out.actMap[idx];
           const ratio = Math.min(1, Math.abs(val) / maxAbs);
+          const isPending = idx >= state.convRevealedCount;
 
           if (val > 0) {
             cell.style.backgroundColor = `rgba(46, 91, 76, ${(0.12 + ratio * 0.68).toFixed(2)})`;
@@ -1877,6 +2149,7 @@
           }
 
           cell.textContent = formatNum(val);
+          cell.classList.toggle("anim-pending", isPending);
           cell.classList.toggle("selected-cell", idx === state.selectedConvCell);
 
           const inPoolWin =
@@ -1884,7 +2157,7 @@
           cell.classList.toggle("pool-window-highlight", inPoolWin);
         });
 
-        // 내적 연산 수식 텍스트 갱신
+        // 내적 수식 검사기 갱신
         const terms = [];
         for (let u = 0; u < 3; u++) {
           for (let v = 0; v < 3; v++) {
@@ -1898,13 +2171,13 @@
         const actVal = out.actMap[state.selectedConvCell];
 
         document.getElementById("dotCellCoord").textContent =
-          `선택 셀 (행 ${selR + 1}, 열 ${selC + 1}) ← 입력 [${selR + 1}..${selR + 3}, ${selC + 1}..${selC + 3}]`;
+          `셀 (${selR + 1},${selC + 1}) ← [${selR + 1}..${selR + 3}, ${selC + 1}..${selC + 3}]`;
         document.getElementById("dotCellResult").textContent = state.useRelu
           ? `합 ${formatNum(rawSum)} → ReLU ${formatNum(actVal)}`
           : `합 = ${formatNum(rawSum)}`;
         document.getElementById("dotFormulaText").textContent =
-          `${terms.join(" + ")} = ${formatNum(rawSum)}` +
-          (state.useRelu ? `  ⇒  max(0, ${formatNum(rawSum)}) = ${formatNum(actVal)}` : "");
+          `${terms.join("+")} = ${formatNum(rawSum)}` +
+          (state.useRelu ? ` ⇒ max(0,${formatNum(rawSum)}) = ${formatNum(actVal)}` : "");
       }
 
       function renderStage2And3() {
@@ -1922,6 +2195,8 @@
         poolCells.forEach((cell, idx) => {
           const val = out.poolFeatures[idx];
           const ratio = Math.min(1, Math.abs(val) / maxPool);
+          const isPending = idx >= state.poolRevealedCount;
+
           if (val > 0) {
             cell.style.backgroundColor = `rgba(201, 166, 91, ${(0.12 + ratio * 0.55).toFixed(2)})`;
           } else if (val < 0) {
@@ -1930,6 +2205,7 @@
             cell.style.backgroundColor = "#FFFFFF";
           }
           cell.querySelector(".pool-val").textContent = formatNum(val);
+          cell.classList.toggle("anim-pending", isPending);
           cell.classList.toggle("active-pool", state.hoveredPoolCell === idx);
         });
 
@@ -1944,11 +2220,11 @@
           const v11 = out.actMap[(r0 + 1) * 6 + (c0 + 1)];
           const opName = state.poolMode === "max" ? "max" : "avg";
           inspector.innerHTML =
-            `<strong>특징 f${idx + 1} (풀링 행 ${Math.floor(idx / 3) + 1}, 열 ${(idx % 3) + 1}):</strong> ` +
+            `<strong>특징 f${idx + 1} (${Math.floor(idx / 3) + 1}행 ${(idx % 3) + 1}열):</strong> ` +
             `<span class="tabular">${opName}([${formatNum(v00)}, ${formatNum(v01)}, ${formatNum(v10)}, ${formatNum(v11)}]) = <strong>${formatNum(out.poolFeatures[idx])}</strong></span>`;
         } else {
           inspector.innerHTML =
-            `<strong>풀링 연산 안내:</strong> 6×6 특징 맵을 겹치지 않는 2×2 구역 9개로 나누어 대표값을 뽑습니다. 칸에 마우스를 올리면 2단계의 해당 2×2 영역이 황토색으로 표시됩니다.`;
+            `<strong>풀링 안내:</strong> 6×6 특징 맵의 2×2 구역 9개에서 대표값을 뽑습니다. 칸에 마우스를 올리면 2단계의 2×2 창이 표시됩니다.`;
         }
       }
 
@@ -1960,48 +2236,71 @@
           state.selectedClassForFormula = out.topClass;
         }
 
-        // 상단 판별 배너 갱신
-        document.getElementById("predDigitDisplay").textContent = String(out.topClass);
-        document.getElementById("predProbDisplay").textContent =
-          `${(out.probs[out.topClass] * 100).toFixed(1)}%`;
+        const hasAnyInk = state.grid8x8.some((v) => v === 1);
+        const isWaiting = state.isPlaying && (state.animPhase === "conv" || state.animPhase === "pool");
+        const banner = document.querySelector(".prediction-banner");
+        if (banner) {
+          banner.classList.toggle("is-empty", !hasAnyInk && !isWaiting);
+          banner.classList.toggle("is-waiting", isWaiting);
+        }
+        document.getElementById("predDigitDisplay").textContent = isWaiting
+          ? "···"
+          : hasAnyInk
+            ? String(out.topClass)
+            : "—";
+        document.getElementById("predProbDisplay").textContent = isWaiting
+          ? "연산 중"
+          : hasAnyInk
+            ? `${(out.probs[out.topClass] * 100).toFixed(1)}%`
+            : "—";
 
-        // 0~9 확률 막대 리스트 렌더링
+        // 0~9 확률 막대 리스트 (기존 DOM 재사용으로 width cubic-bezier 트랜지션 극대화)
         const probListEl = document.getElementById("probList");
-        probListEl.innerHTML = "";
-        for (let k = 0; k < 10; k++) {
-          const row = document.createElement("div");
-          const isTop = k === out.topClass;
-          const isSel = k === state.selectedClassForFormula;
-          row.className =
-            "prob-row" + (isTop ? " top-class" : "") + (isSel ? " selected-class" : "");
-          const pct = (out.probs[k] * 100).toFixed(1);
-
-          row.innerHTML = `
-            <span class="prob-digit">${k}</span>
-            <div class="prob-bar-bg">
-              <div class="prob-bar-fill" style="width: ${Math.max(1, out.probs[k] * 100).toFixed(1)}%"></div>
-            </div>
-            <span class="prob-logit">${out.logits[k].toFixed(1)}</span>
-            <span class="prob-pct">${pct}%</span>
-          `;
-
-          row.addEventListener("click", () => {
-            state.selectedClassForFormula = k;
-            state.userPinnedClass = true;
-            renderStage4AndFormulaBar();
-          });
-
-          probListEl.appendChild(row);
+        if (probListEl.children.length !== 10) {
+          probListEl.innerHTML = "";
+          for (let k = 0; k < 10; k++) {
+            const row = document.createElement("div");
+            row.className = "prob-row";
+            row.dataset.k = String(k);
+            row.innerHTML = `
+              <span class="prob-digit">${k}</span>
+              <div class="prob-bar-bg">
+                <div class="prob-bar-fill" style="width: 10%"></div>
+              </div>
+              <span class="prob-logit">0.0</span>
+              <span class="prob-pct">10.0%</span>
+            `;
+            row.addEventListener("click", () => {
+              state.selectedClassForFormula = k;
+              state.userPinnedClass = true;
+              renderStage4AndFormulaBar();
+            });
+            probListEl.appendChild(row);
+          }
         }
 
-        // SVG 9개 입력 노드(f1~f9) → 10개 출력 노드(0~9) 시냅스 연결선 렌더링
+        const showProb = state.grid8x8.some((v) => v === 1) && !isWaiting;
+        for (let k = 0; k < 10; k++) {
+          const row = probListEl.children[k];
+          const isTop = showProb && k === out.topClass;
+          const isSel = showProb && k === state.selectedClassForFormula;
+          row.className =
+            "prob-row" + (isTop ? " top-class" : "") + (isSel ? " selected-class" : "");
+          const pct = showProb ? `${(out.probs[k] * 100).toFixed(1)}%` : "—";
+          const barWidth = showProb
+            ? `${Math.max(1, out.probs[k] * 100).toFixed(1)}%`
+            : "0%";
+          row.querySelector(".prob-bar-fill").style.width = barWidth;
+          row.querySelector(".prob-logit").textContent = out.logits[k].toFixed(1);
+          row.querySelector(".prob-pct").textContent = pct;
+        }
+
+        // SVG 9→10 시냅스 연결선 렌더링
         const svg = document.getElementById("fcSvg");
-        const w = 118;
-        const h = 290;
-        const leftX = 22;
-        const rightX = 96;
-        const leftYs = Array.from({ length: 9 }, (_, i) => 22 + i * 30.5);
-        const rightYs = Array.from({ length: 10 }, (_, k) => 15 + k * 28.8);
+        const leftX = 21;
+        const rightX = 91;
+        const leftYs = Array.from({ length: 9 }, (_, i) => 20 + i * 29);
+        const rightYs = Array.from({ length: 10 }, (_, k) => 14 + k * 27.2);
 
         let linesSvg = "";
         let maxW = 0.01;
@@ -2016,16 +2315,17 @@
           for (let k = 0; k < 10; k++) {
             const weight = FC_PARAMS.W[i][k];
             const normMag = Math.abs(weight) / maxW;
-            const isFocused = k === focusK;
+            const isFocused = showProb && k === focusK;
             const strokeColor = weight >= 0 ? "#2E5B4C" : "#B85D43";
             const opacity = isFocused
               ? (0.28 + normMag * 0.72).toFixed(2)
               : (0.04 + normMag * 0.1).toFixed(2);
             const strokeWidth = isFocused
-              ? (0.7 + normMag * 2.1).toFixed(2)
+              ? (0.7 + normMag * 2.0).toFixed(2)
               : (0.4 + normMag * 0.6).toFixed(2);
+            const pulseClass = isFocused && state.fcPulseActive ? ' class="fc-line-pulse"' : "";
 
-            linesSvg += `<line x1="${leftX}" y1="${leftYs[i]}" x2="${rightX}" y2="${rightYs[k]}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${opacity}" />`;
+            linesSvg += `<line x1="${leftX}" y1="${leftYs[i]}" x2="${rightX}" y2="${rightYs[k]}" stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-opacity="${opacity}"${pulseClass} />`;
           }
         }
 
@@ -2035,20 +2335,20 @@
           const activeRatio = Math.min(1, Math.max(0, out.poolFeatures[i] / maxFeat));
           const fill = activeRatio > 0.05 ? "#C9A65B" : "#F1EDE4";
           nodesSvg += `
-            <circle cx="${leftX}" cy="${leftYs[i]}" r="7.5" fill="${fill}" stroke="#5E5A52" stroke-width="1" />
-            <text x="${leftX - 12}" y="${leftYs[i] + 3.5}" font-size="9" font-family="monospace" fill="#5E5A52" text-anchor="end">f${i + 1}</text>
+            <circle cx="${leftX}" cy="${leftYs[i]}" r="7" fill="${fill}" stroke="#5E5A52" stroke-width="1" />
+            <text x="${leftX - 11}" y="${leftYs[i] + 3.2}" font-size="8.5" font-family="monospace" fill="#5E5A52" text-anchor="end">f${i + 1}</text>
           `;
         }
 
         for (let k = 0; k < 10; k++) {
-          const isTop = k === out.topClass;
-          const isSel = k === focusK;
+          const isTop = showProb && k === out.topClass;
+          const isSel = showProb && k === focusK;
           const fill = isTop ? "#2E5B4C" : isSel ? "#E6EFEA" : "#FFFFFF";
           const textFill = isTop ? "#FFFFFF" : "#23221F";
           const stroke = isTop || isSel ? "#2E5B4C" : "#888277";
           nodesSvg += `
-            <circle cx="${rightX}" cy="${rightYs[k]}" r="8.5" fill="${fill}" stroke="${stroke}" stroke-width="${isSel ? 1.6 : 1}" />
-            <text x="${rightX}" y="${rightYs[k] + 3.5}" font-size="9.5" font-weight="700" font-family="monospace" fill="${textFill}" text-anchor="middle">${k}</text>
+            <circle cx="${rightX}" cy="${rightYs[k]}" r="8" fill="${fill}" stroke="${stroke}" stroke-width="${isSel ? 1.5 : 1}" />
+            <text x="${rightX}" y="${rightYs[k] + 3.2}" font-size="9" font-weight="700" font-family="monospace" fill="${textFill}" text-anchor="middle">${k}</text>
           `;
         }
 
@@ -2096,70 +2396,197 @@
       }
 
       /* ======================================================================
-         9. 상단 재생 제어 바 & 4단계 스텝 하이라이트
+         9. 부드러운 4단계 알고리즘 시연 애니메이션 (requestAnimationFrame)
+         - Stage 1→2: 3×3 커널 수용 영역이 8×8 위를 부드럽게 슬라이딩 + 6×6 순차 점등
+         - Stage 2→3: 2×2 풀링 창이 6×6 위를 이동 + 3×3 셀 순차 채움
+         - Stage 3→4: FC 연결선 SVG 스트로크 펄스 + 0~9 확률 막대 부드러운 전환
+         - 4단계 완료 시 깔끔하게 정지(무한 루프 금지)
          ====================================================================== */
-      function setStep(stepNum) {
+      function updateStageBadgeText(text, isAnimating = false) {
+        const badge = document.getElementById("stageStatusBadge");
+        badge.classList.add("badge-swap");
+        badge.classList.toggle("is-animating", isAnimating);
+        setTimeout(() => {
+          badge.textContent = text;
+          badge.classList.remove("badge-swap");
+        }, 90);
+      }
+
+      function setStep(stepNum, customStatusText = null, isAnimating = false) {
         state.currentStep = ((stepNum - 1 + 4) % 4) + 1;
         for (let s = 1; s <= 4; s++) {
           const card = document.getElementById(`stageCard${s}`);
           card.classList.toggle("is-current", s === state.currentStep);
         }
+
+        const arr12 = document.getElementById("flowArrow12");
+        const arr23 = document.getElementById("flowArrow23");
+        const arr34 = document.getElementById("flowArrow34");
+        if (arr12) arr12.classList.toggle("is-active", state.currentStep === 2);
+        if (arr23) arr23.classList.toggle("is-active", state.currentStep === 3);
+        if (arr34) arr34.classList.toggle("is-active", state.currentStep === 4);
+
         document.getElementById("stepIndicator").textContent = `${state.currentStep} / 4`;
-        // 모바일처럼 카드가 세로로 쌓이는 화면에서는 현재 단계가 화면 밖일 수 있으므로 가까운 위치로 이동
-        const currentCard = document.getElementById(`stageCard${state.currentStep}`);
-        if (currentCard && currentCard.scrollIntoView) {
-          currentCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        updateStageBadgeText(customStatusText || STAGE_DESCRIPTIONS[state.currentStep], isAnimating);
+
+        if (window.innerWidth < 840) {
+          const currentCard = document.getElementById(`stageCard${state.currentStep}`);
+          if (currentCard && currentCard.scrollIntoView) {
+            currentCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }
         }
       }
 
-      function stopPlayback() {
+      function stopPlayback(restoreFullState = true) {
         state.isPlaying = false;
-        if (state.playTimerId !== null) {
-          clearInterval(state.playTimerId);
-          state.playTimerId = null;
+        if (state.rafId !== null) {
+          cancelAnimationFrame(state.rafId);
+          state.rafId = null;
+        }
+        state.animPhase = "idle";
+        state.fcPulseActive = false;
+        if (restoreFullState) {
+          state.convRevealedCount = 36;
+          state.poolRevealedCount = 9;
+          state.hoveredPoolCell = null;
+          renderStage2And3();
+          renderStage4AndFormulaBar();
         }
         const btn = document.getElementById("btnPlayPause");
-        btn.textContent = "▶ 재생";
+        btn.textContent = "▶ 연산 흐름 시연";
       }
 
       function startPlayback() {
-        stopPlayback();
+        stopPlayback(false);
         state.isPlaying = true;
-        document.getElementById("btnPlayPause").textContent = "❚❚ 일시정지";
-        const intervalMs = Math.round(1400 / state.speed);
-        state.playTimerId = setInterval(() => {
-          // 4단계까지 시연한 뒤에는 자동으로 멈춥니다(무한 반복 방지).
-          if (state.currentStep >= 4) {
-            stopPlayback();
+        document.getElementById("btnPlayPause").textContent = "❚❚ 시연 정지";
+
+        // 빈 캔버스 상태에서 시연을 누르면 사용자가 바로 볼 수 있도록 대표 숫자 '3' 자동 로드
+        const hasAnyInk = state.grid8x8.some((v) => v === 1);
+        if (!hasAnyInk) {
+          state.activePresetDigit = 3;
+          state.grid8x8 = [...DIGIT_PRESETS[3]];
+          state.userPinnedClass = false;
+          state.lastOutput = forwardPass(
+            state.grid8x8,
+            state.kernel3x3,
+            state.useRelu,
+            state.poolMode
+          );
+        }
+
+        // 초기 준비 상태 세팅
+        state.animPhase = "conv";
+        state.convRevealedCount = 0;
+        state.poolRevealedCount = 0;
+        state.hoveredPoolCell = null;
+        state.fcPulseActive = false;
+        setStep(1, "Stage 1 → 2 · 3×3 커널 스캔 준비 중...", true);
+        renderStage2And3();
+        renderStage4AndFormulaBar();
+
+        const spd = state.speed || 1.0;
+        const dStage1 = 550 / spd;   // 1단계 강조 구간
+        const dConv = 2350 / spd;    // 1→2 36칸 슬라이딩 합성곱
+        const dPool = 1250 / spd;    // 2→3 9칸 풀링 이동
+        const dFc = 1150 / spd;      // 3→4 FC 시냅스 펄스 & 확률 막대 전환
+
+        const tStart = performance.now();
+        let lastPhase = "";
+
+        const tick = (now) => {
+          if (!state.isPlaying) return;
+          const elapsed = now - tStart;
+
+          if (elapsed < dStage1) {
+            if (lastPhase !== "s1") {
+              lastPhase = "s1";
+              setStep(1, "Stage 1 · 8×8 이진 입력 픽셀 확인", true);
+            }
+          } else if (elapsed < dStage1 + dConv) {
+            if (lastPhase !== "conv") {
+              lastPhase = "conv";
+              state.animPhase = "conv";
+              setStep(2, "Stage 2 · 3×3 커널 슬라이딩 & 6×6 특징 맵 점등", true);
+            }
+            const ratio = Math.min(1, (elapsed - dStage1) / dConv);
+            const count = Math.min(36, Math.max(1, Math.ceil(ratio * 36)));
+            if (count !== state.convRevealedCount) {
+              state.convRevealedCount = count;
+              state.selectedConvCell = count - 1;
+              renderStage1And2();
+            }
+          } else if (elapsed < dStage1 + dConv + dPool) {
+            if (lastPhase !== "pool") {
+              lastPhase = "pool";
+              state.animPhase = "pool";
+              state.convRevealedCount = 36;
+              setStep(3, "Stage 3 · 2×2 풀링 창 이동 & 3×3 특징(f₁~f₉) 압축", true);
+            }
+            const ratio = Math.min(1, (elapsed - dStage1 - dConv) / dPool);
+            const pCount = Math.min(9, Math.max(1, Math.ceil(ratio * 9)));
+            if (pCount !== state.poolRevealedCount) {
+              state.poolRevealedCount = pCount;
+              state.hoveredPoolCell = pCount - 1;
+              renderStage2And3();
+            }
+          } else if (elapsed < dStage1 + dConv + dPool + dFc) {
+            if (lastPhase !== "fc") {
+              lastPhase = "fc";
+              state.animPhase = "fc";
+              state.poolRevealedCount = 9;
+              state.hoveredPoolCell = null;
+              state.fcPulseActive = true;
+              setStep(4, "Stage 4 · FC 가중치 행렬곱 & Softmax 확률 전이", true);
+              renderStage2And3();
+              renderStage4AndFormulaBar();
+            }
+          } else {
+            // 4단계 완료 후 깔끔하게 정지 (무한 루프 금지)
+            state.isPlaying = false;
+            state.rafId = null;
+            state.animPhase = "idle";
+            state.convRevealedCount = 36;
+            state.poolRevealedCount = 9;
+            state.hoveredPoolCell = null;
+            state.fcPulseActive = false;
+            document.getElementById("btnPlayPause").textContent = "▶ 연산 흐름 시연";
+            setStep(4, `Stage 4 완료 · 최종 판별 숫자 '${state.lastOutput.topClass}' (${(state.lastOutput.probs[state.lastOutput.topClass] * 100).toFixed(1)}%)`, false);
+            renderStage2And3();
+            renderStage4AndFormulaBar();
             return;
           }
-          setStep(state.currentStep + 1);
-        }, intervalMs);
+
+          state.rafId = requestAnimationFrame(tick);
+        };
+
+        state.rafId = requestAnimationFrame(tick);
       }
 
       function bindGlobalControls() {
         document.getElementById("btnPlayPause").addEventListener("click", () => {
           if (state.isPlaying) {
-            stopPlayback();
+            stopPlayback(true);
+            setStep(state.currentStep);
           } else {
             startPlayback();
           }
         });
 
         document.getElementById("btnPrevStep").addEventListener("click", () => {
-          stopPlayback();
+          stopPlayback(true);
           setStep(state.currentStep - 1);
         });
 
         document.getElementById("btnNextStep").addEventListener("click", () => {
-          stopPlayback();
+          stopPlayback(true);
           setStep(state.currentStep + 1);
         });
 
         document.getElementById("btnReset").addEventListener("click", () => {
-          stopPlayback();
-          state.activePresetDigit = 0;
-          state.grid8x8 = [...DIGIT_PRESETS[0]];
+          stopPlayback(true);
+          state.activePresetDigit = null;
+          state.grid8x8 = new Array(64).fill(0); // 초기 빈 8×8 캔버스 복원
           state.drawTool = "draw";
           state.showPixelValues = false;
           state.activeKernelId = "outline";
@@ -2171,7 +2598,7 @@
           state.userPinnedClass = false;
           document.getElementById("chkRelu").checked = true;
           syncKernelInputsFromState();
-          setStep(1);
+          setStep(1, "Stage 1 · 8×8 입력 대기 (격자에 직접 그려 보세요)", false);
           updateAll(true);
         });
 
@@ -2196,6 +2623,7 @@
         });
 
         document.getElementById("btnClearGrid").addEventListener("click", () => {
+          stopPlayback(true);
           state.grid8x8 = new Array(64).fill(0);
           state.activePresetDigit = null;
           state.userPinnedClass = false;
@@ -2207,19 +2635,33 @@
           renderStage1And2();
         });
 
+        // 캔버스 하단 대표 숫자 예시(0~9) 토글
+        const btnTogglePresets = document.getElementById("btnTogglePresets");
+        const presetPanel = document.getElementById("presetPanel");
+        const presetChevron = document.getElementById("presetToggleChevron");
+        btnTogglePresets.addEventListener("click", () => {
+          state.isPresetDrawerOpen = !state.isPresetDrawerOpen;
+          presetPanel.classList.toggle("open", state.isPresetDrawerOpen);
+          btnTogglePresets.setAttribute("aria-expanded", String(state.isPresetDrawerOpen));
+          presetChevron.textContent = state.isPresetDrawerOpen ? "▲" : "▼";
+        });
+
         // 2단계 ReLU 체크박스
         document.getElementById("chkRelu").addEventListener("change", (e) => {
+          stopPlayback(true);
           state.useRelu = e.target.checked;
           updateAll(true);
         });
 
         // 3단계 Max / Avg 풀링 버튼
         document.getElementById("btnPoolMax").addEventListener("click", () => {
+          stopPlayback(true);
           state.poolMode = "max";
           updateAll(true);
         });
 
         document.getElementById("btnPoolAvg").addEventListener("click", () => {
+          stopPlayback(true);
           state.poolMode = "avg";
           updateAll(true);
         });
@@ -2228,11 +2670,12 @@
         for (let s = 1; s <= 4; s++) {
           document.getElementById(`stageCard${s}`).addEventListener("click", (e) => {
             if (e.target.closest("button, input")) return;
+            if (state.isPlaying) stopPlayback(true);
             setStep(s);
           });
         }
 
-        // [기능 2] 설명·MNIST 비교 보드 탭 및 접기/펼치기
+        // 설명·MNIST 비교 보드 탭 및 접기/펼치기
         const tabAlgo = document.getElementById("tabAlgo");
         const tabMnist = document.getElementById("tabMnist");
         const panelAlgo = document.getElementById("panelAlgo");
@@ -2281,9 +2724,9 @@
         initFeatureMap6x6();
         initPoolGrid3x3();
         bindGlobalControls();
-        setStep(1);
+        setStep(1, "Stage 1 · 8×8 입력 대기 (격자에 직접 그려 보세요)", false);
         updateAll(false);
-        // 페이지 로드 시 0~9 전체 프리셋 정확도 검증 및 콘솔 표 출력
+        // 0~9 전체 프리셋 순수 행렬곱 정확도 10/10 검증
         runPresetBenchmark(true);
       });
     })();

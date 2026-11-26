@@ -1,195 +1,234 @@
-import json, sys, time
+#!/usr/bin/env python3
+"""헤드리스 Chromium 자동 검증 (Playwright).
+
+사용:
+    python3 verify/verify.py [--shots <스크린샷 저장 폴더>]
+
+검사 항목: 초기 빈 캔버스, 0~9 프리셋 Max/Avg 10/10, 커널·ReLU·풀링·그리기,
+단계 이동, 4단계 자동 정지, 설명 보드(이진 vs 다중 · MNIST 비교표), 실시간 수식 바,
+애니메이션 규칙(cubic-bezier·keyframes·FC 스트로크 펄스), 1440/1024/900/390px 레이아웃
+(1024·900px 한 줄 4열 좌→우 + 카드 사이 화살표, 390px 세로 스택), JS 콘솔 에러 0건.
+"""
+import json
+import sys
+from pathlib import Path
+
 from playwright.sync_api import sync_playwright
 
-URL = "file:///workspace/downloads/cnn-digit-lab/index.html"
-OUT = "/workspace/downloads/cnn-digit-lab"
-report = {"checks": [], "console_errors": [], "page_errors": [], "presets": {}}
+ROOT = Path(__file__).resolve().parent.parent
+TARGET = ROOT / "index.html"
+REPORT = Path(__file__).resolve().parent / "verify-report.json"
+SHOTS = Path(sys.argv[sys.argv.index("--shots") + 1]) if "--shots" in sys.argv else None
+
+report = {"target": str(TARGET), "checks": [], "console_errors": [], "page_errors": [], "presets": {}}
+
 
 def chk(name, ok, detail=""):
     report["checks"].append({"check": name, "ok": bool(ok), "detail": str(detail)})
     print(("PASS " if ok else "FAIL ") + name + ((" — " + str(detail)) if detail else ""))
 
+
 with sync_playwright() as p:
-    b = p.chromium.launch()
-    page = b.new_page(viewport={"width": 1440, "height": 900})
+    browser = p.chromium.launch()
+    page = browser.new_page(viewport={"width": 1440, "height": 900})
     page.on("console", lambda m: report["console_errors"].append(f"{m.type}: {m.text}") if m.type in ("error", "warning") else None)
     page.on("pageerror", lambda e: report["page_errors"].append(str(e)))
-    page.goto(URL)
-    page.wait_for_timeout(800)
+    page.goto(TARGET.as_uri())
+    page.wait_for_timeout(900)
 
-    chk("페이지 로드 (title)", "CNN" in page.title(), page.title())
-    badge = page.inner_text("#accuracyBadge")
-    chk("정확도 배지 10/10", badge.strip() == "프리셋 정확도 10/10", badge)
+    # --- 1. 첫 화면: 빈 캔버스 + 후행 예시 패널 ---------------------------------
+    filled = page.eval_on_selector_all("#inputGrid8x8 .px-cell", "els => els.filter(e => e.classList.contains('on')).length")
+    chk("초기 로드 시 빈 캔버스 (0칸)", filled == 0, f"filled={filled}")
+    chk("초기 안내 문구", "그려 보세요" in page.inner_text("#canvasGuideBanner"), page.inner_text("#canvasGuideBanner"))
+    chk("예시 프리셋 패널 초기 접힘", page.get_attribute("#btnTogglePresets", "aria-expanded") == "false",
+        page.inner_text("#btnTogglePresets"))
+    chk("빈 상태 최종 판별 비움", page.inner_text("#predDigitDisplay").strip() == "—", page.inner_text("#predDigitDisplay"))
+    page.click("#btnTogglePresets")
+    page.wait_for_timeout(300)
+    chk("대표 숫자 예시 토글 열림", page.get_attribute("#btnTogglePresets", "aria-expanded") == "true",
+        page.inner_text("#btnTogglePresets"))
 
+    # --- 2. 0~9 프리셋 전수 (Max / Avg) ----------------------------------------
     def read_pred():
         return page.inner_text("#predDigitDisplay").strip(), page.inner_text("#predProbDisplay").strip()
 
     def run_presets(label):
         res = {}
         for d in range(10):
-            page.click(f'#digitPresetContainer button:nth-child({d+1})')
-            page.wait_for_timeout(60)
-            pred, prob = read_pred()
-            res[d] = {"pred": pred, "prob": prob}
+            page.click(f"#digitPresetContainer button:nth-child({d + 1})")
+            page.wait_for_timeout(140)
+            res[d] = {"pred": read_pred()[0], "prob": read_pred()[1]}
         ok = all(str(d) == res[d]["pred"] for d in range(10))
-        chk(f"{label}: 0~9 프리셋 전수 1순위 정답", ok,
-            " / ".join(f"{d}→{res[d]['pred']}({res[d]['prob']})" for d in range(10)))
+        chk(f"{label}: 0~9 프리셋 1순위 정답", ok,
+            " ".join(f"{d}->{res[d]['pred']}({res[d]['prob']})" for d in range(10)))
         return res
 
     report["presets"]["max"] = run_presets("Max 풀링")
-
-    # avg pooling
-    page.click("#btnPoolAvg"); page.wait_for_timeout(200)
+    page.click("#btnPoolAvg"); page.wait_for_timeout(350)
     report["presets"]["avg"] = run_presets("Avg 풀링")
-    page.click("#btnPoolMax"); page.wait_for_timeout(200)
+    page.click("#btnPoolMax"); page.wait_for_timeout(350)
+    chk("정확도 배지 10/10", "10/10" in page.inner_text("#accuracyBadge"), page.inner_text("#accuracyBadge"))
 
-    # probability list totals
-    page.click('#digitPresetContainer button:nth-child(4)')  # digit 3
-    page.wait_for_timeout(100)
-    probs = page.eval_on_selector_all("#probList .prob-row .prob-pct, #probList .prob-row", "els => els.map(e => e.textContent.trim())")
-    chk("확률 목록 렌더 (10행)", len(page.query_selector_all("#probList > *")) == 10, len(page.query_selector_all("#probList > *")))
-    pred, prob = read_pred()
-    chk("숫자 3 선택 시 예측 3", pred == "3", f"{pred} / {prob}")
+    page.click("#digitPresetContainer button:nth-child(4)")  # 숫자 3
+    page.wait_for_timeout(200)
+    chk("확률 목록 10행", page.eval_on_selector_all("#probList > *", "els => els.length") == 10)
+    chk("숫자 3 예측", read_pred()[0] == "3", read_pred())
 
-    # feature map hover -> receptive field + formula
+    # --- 3. 합성곱·풀링 상호작용 ------------------------------------------------
     fm = page.query_selector_all("#featureMap6x6 > *")
-    chk("특징 맵 6×6 셀 36개", len(fm) == 36, len(fm))
-    fm[14].hover(); page.wait_for_timeout(150)
+    chk("특징 맵 36칸", len(fm) == 36, len(fm))
+    fm[14].hover(); page.wait_for_timeout(250)
     formula = page.inner_text("#dotFormulaText")
-    chk("특징 맵 호버 시 내적 수식 표시", "=" in formula and "·" in formula, formula[:120])
-    hl = page.eval_on_selector_all("#inputGrid8x8 .receptive-highlight",
-                                    "els => els.length")
-    chk("수용 영역 하이라이트 9칸", hl == 9, hl)
+    chk("특징맵 호버 내적 수식", "=" in formula and "·" in formula, formula[:90])
+    chk("수용 영역 9칸 하이라이트",
+        page.eval_on_selector_all("#inputGrid8x8 .receptive-highlight", "els => els.length") == 9)
+    chk("슬라이딩 커널 창 오버레이 표시", "is-visible" in (page.get_attribute("#receptiveSlider", "class") or ""),
+        page.get_attribute("#receptiveSlider", "class"))
 
-    # kernel weight edit
     before = page.inner_text("#probList")
-    inp = page.query_selector_all("#kernelGrid3x3 input")
-    chk("커널 가중치 입력 9칸", len(inp) == 9, len(inp))
-    inp[4].fill("2"); inp[4].dispatch_event("change"); page.wait_for_timeout(250)
-    after = page.inner_text("#probList")
-    chk("커널 가중치 수정 → 확률 재계산", before != after, "changed" if before != after else "unchanged")
-    inp[4].fill("4"); inp[4].dispatch_event("change"); page.wait_for_timeout(250)
-    chk("가중치 복원 후 정답 유지", read_pred()[0] == "3", read_pred())
+    kernels = page.query_selector_all("#kernelGrid3x3 input")
+    chk("커널 입력 9칸", len(kernels) == 9, len(kernels))
+    kernels[4].fill("2"); kernels[4].dispatch_event("change"); page.wait_for_timeout(350)
+    chk("커널 수정 → 확률 재계산", before != page.inner_text("#probList"))
+    kernels[4].fill("4"); kernels[4].dispatch_event("change"); page.wait_for_timeout(350)
+    chk("커널 프리셋 5종", len(page.query_selector_all("#kernelPresetContainer button")) == 5)
+    relu = page.query_selector("#chkRelu")
+    relu.uncheck(); page.wait_for_timeout(300)
+    relu.check(); page.wait_for_timeout(300)
+    chk("ReLU 토글 후 10/10 유지", "10/10" in page.inner_text("#accuracyBadge"), page.inner_text("#accuracyBadge"))
+    chk("ReLU 후 숫자 3 유지", read_pred()[0] == "3", read_pred())
 
-    # kernel presets
-    kern_res = {}
-    for i in range(5):
-        btns = page.query_selector_all("#kernelPresetContainer button")
-        name = btns[i].inner_text().strip()
-        btns[i].click(); page.wait_for_timeout(250)
-        kern_res[name] = page.inner_text("#accuracyBadge").strip()
-    chk("커널 프리셋 5종 전환 동작", len(kern_res) == 5, json.dumps(kern_res, ensure_ascii=False))
-    report["kernel_badges"] = kern_res
-    page.query_selector_all("#kernelPresetContainer button")[0].click(); page.wait_for_timeout(250)
-
-    # ReLU toggle
-    relu = page.query_selector('input[type=checkbox]')
-    relu.uncheck(); page.wait_for_timeout(250)
-    relu.check(); page.wait_for_timeout(250)
-    chk("ReLU 토글 동작", page.inner_text("#accuracyBadge").strip() == "프리셋 정확도 10/10", page.inner_text("#accuracyBadge"))
-
-    # drawing / eraser / clear
-    cells = page.query_selector_all("#inputGrid8x8 > *")
+    # --- 4. 그리기 / 지우개 / 전체 지우기 / 픽셀 수치 ---------------------------
+    cells = page.query_selector_all("#inputGrid8x8 .px-cell")
     chk("입력 그리드 64칸", len(cells) == 64, len(cells))
-    page.click("#btnClearGrid"); page.wait_for_timeout(150)
-    filled = page.eval_on_selector_all("#inputGrid8x8 > *", "els => els.filter(e => e.classList.contains('on') || e.dataset.v === '1').length")
-    chk("전체 지우기 → 모든 픽셀 0", filled == 0, filled)
+    page.click("#btnClearGrid"); page.wait_for_timeout(250)
+    chk("전체 지우기 → 0칸 + 판별 비움",
+        page.eval_on_selector_all("#inputGrid8x8 .px-cell", "els => els.filter(e => e.classList.contains('on')).length") == 0
+        and page.inner_text("#predDigitDisplay").strip() == "—")
     box = cells[27].bounding_box()
-    page.mouse.move(box["x"] + box["width"]/2, box["y"] + box["height"]/2)
+    page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
     page.mouse.down()
-    page.mouse.move(box["x"] + box["width"]/2 + 40, box["y"] + box["height"]/2)
-    page.mouse.up(); page.wait_for_timeout(200)
-    filled = page.eval_on_selector_all("#inputGrid8x8 > *", "els => els.filter(e => e.classList.contains('on') || e.dataset.v === '1').length")
-    chk("드래그로 그리기 → 픽셀 채워짐", filled > 0, filled)
-    page.click("#btnToolErase")
+    page.mouse.move(box["x"] + box["width"] / 2 + 45, box["y"] + box["height"] / 2 + 8, steps=8)
+    page.mouse.up(); page.wait_for_timeout(300)
+    filled = page.eval_on_selector_all("#inputGrid8x8 .px-cell", "els => els.filter(e => e.classList.contains('on')).length")
+    chk("드래그 그리기 → 채워짐", filled > 0, filled)
+    page.click("#btnToolErase"); page.wait_for_timeout(150)
+    before_e = filled
     box = cells[27].bounding_box()
-    page.mouse.move(box["x"] + box["width"]/2, box["y"] + box["height"]/2)
-    page.mouse.down(); page.mouse.up(); page.wait_for_timeout(150)
-    chk("지우개 동작", True, "clicked")
-    page.click("#btnTogglePixelVal"); page.wait_for_timeout(150)
-    pv = page.inner_text("#btnTogglePixelVal")
-    chk("픽셀 수치 토글", "ON" in pv, pv)
+    page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    page.mouse.down(); page.mouse.up(); page.wait_for_timeout(250)
+    after_e = page.eval_on_selector_all("#inputGrid8x8 .px-cell", "els => els.filter(e => e.classList.contains('on')).length")
+    chk("지우개 → 칸 감소", after_e < before_e, f"{before_e}->{after_e}")
+    page.click("#btnToolDraw")
+    page.click("#btnTogglePixelVal"); page.wait_for_timeout(200)
+    chk("픽셀 수치 토글", "ON" in page.inner_text("#btnTogglePixelVal"), page.inner_text("#btnTogglePixelVal"))
     page.click("#btnTogglePixelVal")
 
-    # play / step / reset
-    page.click("#btnReset"); page.wait_for_timeout(200)
-    step0 = page.inner_text("#stepIndicator")
-    page.click("#btnNextStep"); page.wait_for_timeout(200)
-    step1 = page.inner_text("#stepIndicator")
-    page.click("#btnPrevStep"); page.wait_for_timeout(200)
-    step2 = page.inner_text("#stepIndicator")
-    chk("다음/이전 단계 이동", step0 == "1 / 4" and step1 == "2 / 4" and step2 == "1 / 4", f"{step0} → {step1} → {step2}")
-    # speed slider then autoplay through all four steps
-    slider = page.query_selector('#speedSlider, .speed-slider input, input[type=range]')
-    if slider:
-        slider.fill("3"); slider.dispatch_event("input"); page.wait_for_timeout(150)
-        chk("속도 슬라이더 변경", "3.0" in page.inner_text("#speedValue"), page.inner_text("#speedValue"))
-    page.click("#btnPlayPause"); page.wait_for_timeout(5000)
-    step_play = page.inner_text("#stepIndicator")
-    playing_label = page.inner_text("#btnPlayPause")
-    if "일시정지" in playing_label or "정지" in playing_label:
-        page.click("#btnPlayPause")
-    chk("자동 재생 4단계까지 진행", step_play.strip() == "4 / 4", f"{step_play} / {playing_label}")
+    # --- 5. 단계 이동 · 자동 재생 정지 -----------------------------------------
+    page.click("#btnReset"); page.wait_for_timeout(400)
+    chk("초기화 → 빈 캔버스 · 1단계",
+        page.eval_on_selector_all("#inputGrid8x8 .px-cell", "els => els.filter(e => e.classList.contains('on')).length") == 0
+        and page.inner_text("#stepIndicator").strip() == "1 / 4")
+    page.click("#btnNextStep"); page.wait_for_timeout(300)
+    s2 = page.inner_text("#stepIndicator").strip()
+    page.click("#btnNextStep"); page.wait_for_timeout(300)
+    s3 = page.inner_text("#stepIndicator").strip()
+    page.click("#btnPrevStep"); page.wait_for_timeout(300)
+    s2b = page.inner_text("#stepIndicator").strip()
+    chk("단계 이동 1→2→3→2", (s2, s3, s2b) == ("2 / 4", "3 / 4", "2 / 4"), f"{s2} {s3} {s2b}")
+
     page.click("#btnReset"); page.wait_for_timeout(300)
-    chk("초기화 후 1단계 · 숫자 0", page.inner_text("#stepIndicator").strip() == "1 / 4" and read_pred()[0] == "0",
-        f'{page.inner_text("#stepIndicator")} / {read_pred()}')
+    slider = page.query_selector("#speedSlider")
+    slider.fill("3"); slider.dispatch_event("input"); page.wait_for_timeout(200)
+    chk("속도 3.0×", "3.0" in page.inner_text("#speedValue"), page.inner_text("#speedValue"))
+    page.click("#btnPlayPause"); page.wait_for_timeout(700)
+    playing = page.inner_text("#btnPlayPause")
+    page.wait_for_timeout(4500)
+    step_play = page.inner_text("#stepIndicator").strip()
+    ended = page.inner_text("#btnPlayPause")
+    chk("재생 중 정지 라벨", "정지" in playing, playing)
+    chk("재생 → 4단계 도달", step_play == "4 / 4", step_play)
+    chk("재생 완료 후 자동 정지", "정지" not in ended, ended)
+    t1 = page.inner_text("#stepIndicator")
+    page.wait_for_timeout(1500)
+    chk("정지 후 단계 고정 (무한 루프 없음)", t1 == page.inner_text("#stepIndicator") == "4 / 4")
+    chk("빈 캔버스 시연 시 데모 숫자 3 로드", page.inner_text("#predDigitDisplay").strip() == "3")
 
-    # education board tabs
-    tabs = page.query_selector_all("#tabAlgo, #tabMnist")
-    chk("설명 보드 탭 2개", len(tabs) == 2, len(tabs))
-    page.click("#tabMnist"); page.wait_for_timeout(250)
-    mnist_text = page.inner_text("#eduBoardBody")
-    chk("MNIST 비교표 표시", "MNIST" in mnist_text and "28 × 28" in mnist_text and "784" in mnist_text and "60,000" in mnist_text, mnist_text[:80])
-    rows = page.eval_on_selector_all("#eduBoardBody table tr", "els => els.length")
-    chk("비교표 행 7개 이상", rows >= 7, rows)
-    page.click("#tabAlgo"); page.wait_for_timeout(200)
-    algo = page.inner_text("#eduBoardBody")
-    chk("알고리즘 설명 표시 (시그모이드/소프트맥스)",
-        "시그모이드" in algo and "소프트맥스" in algo, algo[:80])
-    page.click("#btnToggleEduBoard"); page.wait_for_timeout(200)
-    collapsed = page.get_attribute("#btnToggleEduBoard", "aria-expanded")
-    page.click("#btnToggleEduBoard"); page.wait_for_timeout(200)
-    chk("설명 보드 접기/펼치기", collapsed == "false", collapsed)
-
-    # bottom formula bar
-    page.click("#btnPlayPause") if False else None
-    f1 = page.inner_text("#bottomLogitExpr"); f2 = page.inner_text("#bottomSoftmaxExpr")
-    chk("하단 실시간 수식 바", "z" in f1 and "exp" in f2, f"{f1[:60]} | {f2[:60]}")
-
-    # screenshots
-    page.click("#btnReset"); page.wait_for_timeout(300)
-    page.click('#digitPresetContainer button:nth-child(8)')  # 7
-    page.wait_for_timeout(200)
-    page.evaluate("window.scrollTo(0,0)")
-    page.wait_for_timeout(200)
-    page.screenshot(path=f"{OUT}/verify-1-desktop-1440.png", full_page=True)
-    # comparison board screenshot (MNIST tab open)
+    # --- 6. 설명 보드 -----------------------------------------------------------
+    chk("설명 보드 탭 2개", len(page.query_selector_all("#tabAlgo, #tabMnist")) == 2)
     page.click("#tabMnist"); page.wait_for_timeout(300)
-    page.query_selector("#eduBoardBody").scroll_into_view_if_needed()
-    page.wait_for_timeout(400)
-    page.screenshot(path=f"{OUT}/verify-2-mnist-board.png", full_page=False)
-    page.click("#tabAlgo") if False else None
-    page.set_viewport_size({"width": 1024, "height": 900}); page.wait_for_timeout(400)
-    page.evaluate("window.scrollTo(0,0)")
-    page.screenshot(path=f"{OUT}/verify-4-tablet-1024.png", full_page=True)
-    page.set_viewport_size({"width": 390, "height": 844}); page.wait_for_timeout(400)
-    overflow = page.evaluate("document.documentElement.scrollWidth - window.innerWidth")
-    chk("모바일 390px 가로 넘침 없음", overflow <= 1, f"overflow={overflow}px")
-    page.screenshot(path=f"{OUT}/verify-3-mobile-390.png", full_page=True)
-    page.set_viewport_size({"width": 1440, "height": 900}); page.wait_for_timeout(300)
+    mnist_text = page.inner_text("#eduBoardBody")
+    chk("MNIST 비교표 (28×28 · 784 · 60,000)",
+        all(k in mnist_text for k in ("MNIST", "28 × 28", "784", "60,000")), mnist_text[:60])
+    chk("비교표 7행 이상", page.eval_on_selector_all("#eduBoardBody table tr", "els => els.length") >= 7)
+    page.click("#tabAlgo"); page.wait_for_timeout(300)
+    algo = page.inner_text("#eduBoardBody")
+    chk("이진(시그모이드) vs 다중(소프트맥스) 설명", "시그모이드" in algo and "소프트맥스" in algo, algo[:60])
+    page.click("#btnToggleEduBoard"); page.wait_for_timeout(250)
+    chk("설명 보드 접기", page.get_attribute("#btnToggleEduBoard", "aria-expanded") == "false")
+    page.click("#btnToggleEduBoard"); page.wait_for_timeout(250)
 
-    # console summary
-    errs = [e for e in report["console_errors"] if e.startswith("error")]
-    chk("JS 콘솔 에러 0건", len(errs) == 0 and len(report["page_errors"]) == 0,
-        f"console={errs[:3]} pageerror={report['page_errors'][:3]}")
+    f1, f2 = page.inner_text("#bottomLogitExpr"), page.inner_text("#bottomSoftmaxExpr")
+    chk("하단 실시간 수식 바", "z" in f1 and "exp" in f2, f"{f1[:40]} | {f2[:40]}")
 
-    b.close()
+    # --- 7. 애니메이션 규칙 -----------------------------------------------------
+    anim = page.evaluate("""() => {
+      const bar = document.querySelector('#probList .prob-bar-fill');
+      const cs = bar ? getComputedStyle(bar) : null;
+      const sheet = [...document.styleSheets].map(s => { try { return [...s.cssRules].map(r => r.cssText).join('\\n'); } catch (e) { return ''; } }).join('\\n');
+      return {
+        barTransition: cs ? cs.transition : '',
+        keyframes: (sheet.match(/@keyframes/g) || []).length,
+        pulse: /fc-line-pulse|fcPulse/.test(sheet),
+        bezier: /cubic-bezier/.test(sheet),
+        arrows: document.querySelectorAll('.flow-arrow').length
+      };
+    }""")
+    chk("확률 막대 cubic-bezier 전환", "cubic-bezier" in anim["barTransition"], anim["barTransition"])
+    chk("@keyframes 애니메이션 정의", anim["keyframes"] > 0, anim["keyframes"])
+    chk("FC 연결선 스트로크 펄스", anim["pulse"], anim["pulse"])
+    chk("흐름 화살표 3개", anim["arrows"] == 3, anim["arrows"])
+
+    # --- 8. 레이아웃 ------------------------------------------------------------
+    page.click("#btnReset"); page.wait_for_timeout(300)
+
+    def layout(width, height, name):
+        page.set_viewport_size({"width": width, "height": height}); page.wait_for_timeout(450)
+        page.evaluate("window.scrollTo(0,0)"); page.wait_for_timeout(150)
+        info = page.evaluate("""() => {
+          const cards = [1, 2, 3, 4].map(i => { const r = document.getElementById('stageCard' + i).getBoundingClientRect(); return {x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width)}; });
+          const arrows = [12, 23, 34].map(n => { const el = document.getElementById('flowArrow' + n); const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return {x: Math.round(r.x), w: Math.round(r.width), visible: cs.display !== 'none' && r.width > 0}; });
+          return {cards, arrows, overflow: document.documentElement.scrollWidth - window.innerWidth};
+        }""")
+        same_row = len({c["y"] for c in info["cards"]}) == 1
+        left_to_right = all(info["cards"][i]["x"] < info["cards"][i + 1]["x"] for i in range(3))
+        if width >= 840:
+            chk(f"{width}px: Stage 1~4 한 줄 4열 좌→우", same_row and left_to_right, json.dumps([c['x'] for c in info['cards']]))
+            chk(f"{width}px: 카드 사이 화살표", all(a["visible"] for a in info["arrows"]),
+                json.dumps([a["x"] for a in info["arrows"]]))
+        else:
+            chk(f"{width}px: 세로 스택", all(info["cards"][i]["y"] < info["cards"][i + 1]["y"] for i in range(3)),
+                json.dumps([c["y"] for c in info["cards"]]))
+        chk(f"{width}px: 가로 넘침 없음", info["overflow"] <= 1, info["overflow"])
+        if SHOTS:
+            SHOTS.mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=str(SHOTS / f"{name}.png"), full_page=True)
+
+    layout(1440, 900, "layout-1440")
+    layout(1024, 768, "layout-1024")
+    layout(900, 800, "layout-900")
+    layout(390, 844, "layout-390")
+
+    errors = [e for e in report["console_errors"] if e.startswith("error")]
+    chk("JS 콘솔 에러 0건", len(errors) == 0 and len(report["page_errors"]) == 0,
+        f"{errors[:2]} {report['page_errors'][:2]}")
+    browser.close()
 
 report["summary"] = {
     "passed": sum(1 for c in report["checks"] if c["ok"]),
     "failed": sum(1 for c in report["checks"] if not c["ok"]),
 }
-json.dump(report, open("/workspace/work-cnn/verify_report.json", "w"), ensure_ascii=False, indent=2)
+REPORT.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 print("\n== summary:", report["summary"])
 for c in report["checks"]:
     if not c["ok"]:
